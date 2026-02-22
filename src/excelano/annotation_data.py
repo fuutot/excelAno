@@ -18,9 +18,7 @@ class AnnotationData(pd.DataFrame):
         return AnnotationData
 
     @staticmethod
-    def from_excel(
-        file_path, dtype: dict[str, type], annotated_cols: list[str]
-    ) -> "AnnotationData":
+    def from_excel(file_path, dtype: dict[str, type], annotated_cols: list[str]) -> "AnnotationData":
         """
         エクセル形式のアノテーションデータを読み込むメソッド
         args:
@@ -42,3 +40,10 @@ class AnnotationData(pd.DataFrame):
         result = AnnotationData(df)
         result.annotated_cols = annotated_cols
         return result
+
+
+class MultipleAnnotationData:
+    """複数のアノテーションデータをまとめて管理するクラス"""
+
+    def __init__(self, annotation_data_list: list[AnnotationData]):
+        self.annotation_data_list = annotation_data_list
