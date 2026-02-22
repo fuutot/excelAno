@@ -1,0 +1,138 @@
+import pytest
+
+from excelano.annotation_data import AnnotationData, MultipleAnnotationData
+
+# 2評価者が完全に一致しているデータ（kappa = 1.0 になるはず）
+PERFECT_AGREEMENT_ANNOTATOR_A = {
+    "query_id": ["q1", "q2", "q3", "q4"],
+    "relevance": [1, 0, 1, 0],
+}
+PERFECT_AGREEMENT_ANNOTATOR_B = {
+    "query_id": ["q1", "q2", "q3", "q4"],
+    "relevance": [1, 0, 1, 0],
+}
+
+# 2評価者が全く一致しないデータ（kappa = -1.0 になるはず）
+NO_AGREEMENT_ANNOTATOR_A = {
+    "query_id": ["q1", "q2", "q3", "q4"],
+    "relevance": [1, 1, 0, 0],
+}
+NO_AGREEMENT_ANNOTATOR_B = {
+    "query_id": ["q1", "q2", "q3", "q4"],
+    "relevance": [0, 0, 1, 1],
+}
+
+# 3評価者による既知のkappa値を持つデータ（期待kappa ≈ 0.595）
+FLEISS_EXAMPLE_ANNOTATOR_A = {
+    "query_id": ["q1", "q2", "q3", "q4", "q5"],
+    "category": [1, 1, 2, 2, 3],
+}
+FLEISS_EXAMPLE_ANNOTATOR_B = {
+    "query_id": ["q1", "q2", "q3", "q4", "q5"],
+    "category": [1, 2, 2, 3, 3],
+}
+FLEISS_EXAMPLE_ANNOTATOR_C = {
+    "query_id": ["q1", "q2", "q3", "q4", "q5"],
+    "category": [1, 1, 2, 2, 3],
+}
+
+
+def _make_annotation_data(data: dict, annotated_col: str) -> AnnotationData:
+    """テスト用のAnnotationDataを作成するヘルパー関数"""
+    import pandas as pd
+
+    df = pd.DataFrame(data)
+    result = AnnotationData(df)
+    result.annotated_cols = [annotated_col]
+    return result
+
+
+class TestCohenKappaForTwoAnnotators:
+    """2評価者のときにCohen's kappaが正しく計算されることを確認するテスト"""
+
+    def test_perfect_agreement_returns_one(self):
+        """2評価者が完全に一致しているとき，kappa = 1.0 になることを確認する"""
+        annotator_a = _make_annotation_data(PERFECT_AGREEMENT_ANNOTATOR_A, "relevance")
+        annotator_b = _make_annotation_data(PERFECT_AGREEMENT_ANNOTATOR_B, "relevance")
+        multi = MultipleAnnotationData([annotator_a, annotator_b])
+
+        kappa = multi.compute_kappa("relevance")
+
+        assert kappa == pytest.approx(1.0)
+
+    def test_no_agreement_returns_negative_one(self):
+        """2評価者が全く一致しないとき，kappa = -1.0 になることを確認する"""
+        annotator_a = _make_annotation_data(NO_AGREEMENT_ANNOTATOR_A, "relevance")
+        annotator_b = _make_annotation_data(NO_AGREEMENT_ANNOTATOR_B, "relevance")
+        multi = MultipleAnnotationData([annotator_a, annotator_b])
+
+        kappa = multi.compute_kappa("relevance")
+
+        assert kappa == pytest.approx(-1.0)
+
+    def test_partial_agreement_returns_value_between_minus_one_and_one(self):
+        """2評価者が部分的に一致しているとき，kappaが-1〜1の範囲に収まることを確認する"""
+        import pandas as pd
+
+        # 4件中3件一致（q1, q2, q3 は一致, q4 は不一致）
+        annotator_a = _make_annotation_data({"query_id": ["q1", "q2", "q3", "q4"], "relevance": [1, 1, 0, 0]}, "relevance")
+        annotator_b = _make_annotation_data({"query_id": ["q1", "q2", "q3", "q4"], "relevance": [1, 1, 0, 1]}, "relevance")
+        multi = MultipleAnnotationData([annotator_a, annotator_b])
+
+        kappa = multi.compute_kappa("relevance")
+
+        assert -1.0 <= kappa <= 1.0
+
+
+class TestFleissKappaForThreeOrMoreAnnotators:
+    """3評価者以上のときにFleiss' kappaが正しく計算されることを確認するテスト"""
+
+    def test_perfect_agreement_with_three_annotators_returns_one(self):
+        """3評価者が完全に一致しているとき，kappa = 1.0 になることを確認する"""
+        annotator_a = _make_annotation_data(PERFECT_AGREEMENT_ANNOTATOR_A, "relevance")
+        annotator_b = _make_annotation_data(PERFECT_AGREEMENT_ANNOTATOR_B, "relevance")
+        annotator_c = _make_annotation_data(PERFECT_AGREEMENT_ANNOTATOR_A, "relevance")
+        multi = MultipleAnnotationData([annotator_a, annotator_b, annotator_c])
+
+        kappa = multi.compute_kappa("relevance")
+
+        assert kappa == pytest.approx(1.0)
+
+    def test_three_annotators_returns_value_between_minus_one_and_one(self):
+        """3評価者の場合，kappaが-1〜1の範囲に収まることを確認する"""
+        annotator_a = _make_annotation_data(FLEISS_EXAMPLE_ANNOTATOR_A, "category")
+        annotator_b = _make_annotation_data(FLEISS_EXAMPLE_ANNOTATOR_B, "category")
+        annotator_c = _make_annotation_data(FLEISS_EXAMPLE_ANNOTATOR_C, "category")
+        multi = MultipleAnnotationData([annotator_a, annotator_b, annotator_c])
+
+        kappa = multi.compute_kappa("category")
+
+        assert -1.0 <= kappa <= 1.0
+
+    def test_four_annotators_uses_fleiss_kappa(self):
+        """4評価者でもFleiss' kappaが正しく計算されることを確認する"""
+        annotator_a = _make_annotation_data(PERFECT_AGREEMENT_ANNOTATOR_A, "relevance")
+        annotator_b = _make_annotation_data(PERFECT_AGREEMENT_ANNOTATOR_B, "relevance")
+        annotator_c = _make_annotation_data(PERFECT_AGREEMENT_ANNOTATOR_A, "relevance")
+        annotator_d = _make_annotation_data(PERFECT_AGREEMENT_ANNOTATOR_B, "relevance")
+        multi = MultipleAnnotationData([annotator_a, annotator_b, annotator_c, annotator_d])
+
+        kappa = multi.compute_kappa("relevance")
+
+        assert kappa == pytest.approx(1.0)
+
+    def test_known_fleiss_kappa_value(self):
+        """既知のデータで計算されるFleiss' kappaの値が期待値と一致することを確認する
+
+        3評価者，5アイテム，各評価者の評価:
+        A: [1,1,2,2,3], B: [1,2,2,3,3], C: [1,1,2,2,3]
+        手動計算による期待kappa ≈ 0.595
+        """
+        annotator_a = _make_annotation_data(FLEISS_EXAMPLE_ANNOTATOR_A, "category")
+        annotator_b = _make_annotation_data(FLEISS_EXAMPLE_ANNOTATOR_B, "category")
+        annotator_c = _make_annotation_data(FLEISS_EXAMPLE_ANNOTATOR_C, "category")
+        multi = MultipleAnnotationData([annotator_a, annotator_b, annotator_c])
+
+        kappa = multi.compute_kappa("category")
+
+        assert kappa == pytest.approx(0.595, abs=0.01)
