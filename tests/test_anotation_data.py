@@ -46,6 +46,7 @@ def test_from_excel_reads_data(tmp_path):
     assert result["query_id"].tolist() == ["query_1", "query_2", "query_3"]
     assert result["query"].tolist() == ["What is AI?", "What is ML?", "What is DL?"]
     assert result["relevance"].tolist() == [1, 1, 1]
+    assert result.anotated_cols == ["relevance"]
 
 
 def test_from_excel_applies_dtype(tmp_path):
