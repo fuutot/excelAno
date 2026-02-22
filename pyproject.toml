@@ -7,8 +7,21 @@ authors = [
     { name = "fuutot", email = "153519467+fuutot@users.noreply.github.com" }
 ]
 requires-python = ">=3.12.2"
-dependencies = []
+dependencies = [
+    "openpyxl>=3.1.5",
+    "pandas>=3.0.1",
+]
 
 [build-system]
 requires = ["uv_build>=0.8.22,<0.9.0"]
 build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.2",
+]
+
+[tool.pytest]
+testpaths = [
+    "tests",
+]
