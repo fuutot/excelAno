@@ -8,6 +8,15 @@ class MissingValueError(ValueError):
 
 
 class AnotationData(pd.DataFrame):
+    # TODO: DataFrameを継承する際の注意点を読む
+    # https://pandas.pydata.org/docs/development/extending.html#subclassing-pandas-data-structures
+
+    _metadata = ["anotated_cols"]  # pandasのDataFrameに属性を保持させるための変数
+
+    @property
+    def _constructor(self):
+        return AnotationData
+
     @staticmethod
     def from_excel(
         file_path, dtype: dict[str, type], anotated_cols: list[str]
@@ -30,4 +39,6 @@ class AnotationData(pd.DataFrame):
 
         df = df.astype(dtype)
 
-        return AnotationData(df)
+        result = AnotationData(df)
+        result.anotated_cols = anotated_cols
+        return result
