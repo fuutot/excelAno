@@ -2,7 +2,7 @@ import pandas as pd
 import pandas.api.types as pd_types
 import pytest
 
-from excelano.anotation_data import AnotationData, MissingValueError
+from excelano.annotation_data import AnnotationData, MissingValueError
 
 SAMPLE_DATA = {
     "query_id": ["query_1", "query_2", "query_3"],
@@ -29,13 +29,13 @@ def test_from_excel_reads_data(tmp_path):
     file_path = tmp_path / "annotations.xlsx"
     df.to_excel(file_path, index=False)
 
-    result = AnotationData.from_excel(
+    result = AnnotationData.from_excel(
         file_path=str(file_path),
         dtype=SAMPLE_DATA_DTYPE,
-        anotated_cols=["relevance"],
+        annotated_cols=["relevance"],
     )
 
-    assert isinstance(result, AnotationData)
+    assert isinstance(result, AnnotationData)
     assert list(result.columns) == [
         "query_id",
         "document_id",
@@ -46,7 +46,7 @@ def test_from_excel_reads_data(tmp_path):
     assert result["query_id"].tolist() == ["query_1", "query_2", "query_3"]
     assert result["query"].tolist() == ["What is AI?", "What is ML?", "What is DL?"]
     assert result["relevance"].tolist() == [1, 1, 1]
-    assert result.anotated_cols == ["relevance"]
+    assert result.annotated_cols == ["relevance"]
 
 
 def test_from_excel_applies_dtype(tmp_path):
@@ -54,10 +54,10 @@ def test_from_excel_applies_dtype(tmp_path):
     file_path = tmp_path / "annotations.xlsx"
     df.to_excel(file_path, index=False)
 
-    result = AnotationData.from_excel(
+    result = AnnotationData.from_excel(
         file_path=str(file_path),
         dtype=SAMPLE_DATA_DTYPE,
-        anotated_cols=["relevance"],
+        annotated_cols=["relevance"],
     )
 
     # Python標準の型はpandasのdtypeをうまく判定できないため，pd.api.typesを使う
@@ -66,21 +66,21 @@ def test_from_excel_applies_dtype(tmp_path):
     assert pd_types.is_integer_dtype(result["relevance"])
 
 
-def test_keeps_anotated_cols(tmp_path):
-    """AnotationDataがDataFrame操作後もanotated_cols属性を保持していることを確認するテスト"""
+def test_keeps_annotated_cols(tmp_path):
+    """AnnotationDataがDataFrame操作後もannotated_cols属性を保持していることを確認するテスト"""
     df = pd.DataFrame(SAMPLE_DATA)
     file_path = tmp_path / "annotations.xlsx"
     df.to_excel(file_path, index=False)
 
-    result = AnotationData.from_excel(
+    result = AnnotationData.from_excel(
         file_path=str(file_path),
         dtype=SAMPLE_DATA_DTYPE,
-        anotated_cols=["relevance"],
+        annotated_cols=["relevance"],
     )
 
     qrels = result[["query_id", "document_id", "relevance"]]
-    assert isinstance(qrels, AnotationData)
-    assert qrels.anotated_cols == ["relevance"]
+    assert isinstance(qrels, AnnotationData)
+    assert qrels.annotated_cols == ["relevance"]
 
 
 SAMPLE_DATA_INCOMPLETE = {
@@ -105,8 +105,8 @@ def test_from_excel_with_incomplete_data(tmp_path):
     with pytest.raises(
         MissingValueError, match="アノテーションデータに欠損値が含まれています。"
     ):
-        AnotationData.from_excel(
+        AnnotationData.from_excel(
             file_path=str(file_path),
             dtype=SAMPLE_DATA_DTYPE,
-            anotated_cols=["relevance"],
+            annotated_cols=["relevance"],
         )
