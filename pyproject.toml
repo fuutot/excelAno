@@ -27,3 +27,7 @@ dev = [
 testpaths = [
     "tests",
 ]
+
+[tool.ruff]
+line-length = 119
+fix = true
