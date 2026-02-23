@@ -1,6 +1,6 @@
 import pytest
 
-from excelano.annotation_data import AnnotationData, MultipleAnnotationData
+from excelano.annotation_data import AnnotationData, AnnotationTargetMismatchError, MultipleAnnotationData
 
 # 2評価者が完全に一致しているデータ（kappa = 1.0 になるはず）
 PERFECT_AGREEMENT_ANNOTATOR_A = {
@@ -136,3 +136,38 @@ class TestFleissKappaForThreeOrMoreAnnotators:
         kappa = multi.compute_kappa("category")
 
         assert kappa == pytest.approx(0.595, abs=0.01)
+
+
+class TestAnnotationTargetAlignment:
+    """評価対象の照合（ID整列・不一致検出）に関するテスト"""
+
+    def test_different_row_order_produces_same_kappa_as_aligned_order(self):
+        """行順が異なる2評価者のデータでも，IDで整列することで同じkappa値が得られることを確認する"""
+        # annotator_b のデータは行順が逆になっているが，query_id で整列されるため同じ結果になるはず
+        annotator_a = _make_annotation_data(
+            {"query_id": ["q1", "q2", "q3", "q4"], "relevance": [1, 0, 1, 0]}, "relevance"
+        )
+        annotator_b_reversed = _make_annotation_data(
+            {"query_id": ["q4", "q3", "q2", "q1"], "relevance": [0, 1, 0, 1]}, "relevance"
+        )
+        annotator_b_aligned = _make_annotation_data(
+            {"query_id": ["q1", "q2", "q3", "q4"], "relevance": [1, 0, 1, 0]}, "relevance"
+        )
+
+        kappa_reversed = MultipleAnnotationData([annotator_a, annotator_b_reversed]).compute_kappa("relevance")
+        kappa_aligned = MultipleAnnotationData([annotator_a, annotator_b_aligned]).compute_kappa("relevance")
+
+        assert kappa_reversed == pytest.approx(kappa_aligned)
+
+    def test_mismatched_evaluation_targets_raise_error(self):
+        """評価者間で評価対象が異なる場合にエラーが発生することを確認する"""
+        annotator_a = _make_annotation_data(
+            {"query_id": ["q1", "q2", "q3"], "relevance": [1, 0, 1]}, "relevance"
+        )
+        # annotator_b は q3 の代わりに q4 を評価している
+        annotator_b_different_items = _make_annotation_data(
+            {"query_id": ["q1", "q2", "q4"], "relevance": [1, 0, 1]}, "relevance"
+        )
+
+        with pytest.raises(AnnotationTargetMismatchError, match="評価対象が一致しません"):
+            MultipleAnnotationData([annotator_a, annotator_b_different_items]).compute_kappa("relevance")

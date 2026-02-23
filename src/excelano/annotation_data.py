@@ -8,6 +8,12 @@ class MissingValueError(ValueError):
     pass
 
 
+class AnnotationTargetMismatchError(ValueError):
+    """評価者間で評価対象が一致しない場合に発生するエラー"""
+
+    pass
+
+
 class AnnotationData(pd.DataFrame):
     # TODO: DataFrameを継承する際の注意点を読む
     # https://pandas.pydata.org/docs/development/extending.html#subclassing-pandas-data-structures
@@ -59,9 +65,31 @@ class MultipleAnnotationData:
             target_col: カッパ係数を計算する対象の列名（annotated_colsに含まれている必要がある）
         returns:
             float: カッパ係数
+        raises:
+            AnnotationTargetMismatchError: 評価者間で評価対象のセットが一致しない場合
         """
-        # 各評価者のtarget_col列をリストで取得する
-        ratings = [data[target_col].tolist() for data in self.annotation_data_list]
+        # アノテーション対象列以外をID列とし，行順ではなくIDで評価対象を照合する
+        # こうすることで，各評価者のデータフレームの行順が異なっていても正しく計算できる
+        first = self.annotation_data_list[0]
+        id_cols = [col for col in first.columns if col not in first.annotated_cols]
+
+        if id_cols:
+            # 全評価者のデータをID列でソートして整列する
+            aligned = [data.sort_values(by=id_cols).reset_index(drop=True) for data in self.annotation_data_list]
+
+            # 全評価者が同じ評価対象セットを持っているか検証する
+            # 評価対象が一致しない場合，kappa係数が意味を持たないためエラーを発生させる
+            for data in aligned[1:]:
+                if not aligned[0][id_cols].equals(data[id_cols]):
+                    raise AnnotationTargetMismatchError(
+                        "評価対象が一致しません。すべての評価者が同じ評価対象を持っている必要があります。"
+                    )
+        else:
+            # ID列がない場合（全列がアノテーション対象列の場合）は行順のまま使用する
+            aligned = self.annotation_data_list
+
+        # ID整列済みのデータからtarget_col列の評価値を取得する
+        ratings = [data[target_col].tolist() for data in aligned]
 
         if len(self.annotation_data_list) == 2:
             # 評価者が2人の場合はCohen's kappaを使用する
