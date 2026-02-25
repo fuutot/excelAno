@@ -119,7 +119,15 @@ class MultipleAnnotationData:
     def _compute_cohen_kappa(ratings1: list, ratings2: list) -> float:
         """Cohen's kappa係数を計算する（2評価者向け）
 
-        偶然の一致を補正した上で，評価者間の合致率を0〜1のスコアとして返す。
+        偶然の一致を補正した上で，評価者間の合致率を0～1のスコアとして返す。
+
+        args:
+            ratings1: 評価者1の評価値のリスト
+                     例: [1, 0, 1, 0]（4つのアイテムに対する評価値）
+            ratings2: 評価者2の評価値のリスト
+                     例: [1, 0, 1, 0]（同じアイテムに対する評価値）
+        returns:
+            float: Cohen's kappa係数（-1～1の範囲）
         """
         n = len(ratings1)
         categories = sorted(set(ratings1) | set(ratings2))
@@ -145,6 +153,17 @@ class MultipleAnnotationData:
         """Fleiss' kappa係数を計算する（3評価者以上向け）
 
         複数評価者の評価データを行列に変換し，偶然の一致を補正した合致率を返す。
+
+        args:
+            ratings: 複数評価者の評価値のリスト。各評価者の評価値を要素とするリストのリスト。
+                     ratings[i]は評価者iの全アイテムに対する評価値のリスト
+                     例: [[1, 0, 1], [1, 0, 1], [1, 1, 1]]
+                        3つのアイテムに対して3評価者が評価した値
+                        ratings[0] = [1, 0, 1]（評価者1の評価）
+                        ratings[1] = [1, 0, 1]（評価者2の評価）
+                        ratings[2] = [1, 1, 1]（評価者3の評価）
+        returns:
+            float: Fleiss' kappa係数（-1～1の範囲）
         """
         n_raters = len(ratings)
         n_subjects = len(ratings[0])
