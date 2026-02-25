@@ -18,20 +18,26 @@ class AnnotationData(pd.DataFrame):
     # TODO: DataFrameを継承する際の注意点を読む
     # https://pandas.pydata.org/docs/development/extending.html#subclassing-pandas-data-structures
 
-    _metadata = ["annotated_cols"]  # pandasのDataFrameに属性を保持させるための変数
+    _metadata = ["annotated_cols", "id_cols"]  # pandasのDataFrameに属性を保持させるための変数
 
     @property
     def _constructor(self):
         return AnnotationData
 
     @staticmethod
-    def from_excel(file_path, dtype: dict[str, type], annotated_cols: list[str]) -> "AnnotationData":
+    def from_excel(
+        file_path,
+        dtype: dict[str, type],
+        annotated_cols: list[str],
+        id_cols: list[str] | None = None,
+    ) -> "AnnotationData":
         """
         エクセル形式のアノテーションデータを読み込むメソッド
         args:
             file_path: エクセルファイルのパス
             dtype: 列名とデータ型の辞書
             annotated_cols: アノテーション対象の列名のリスト
+            id_cols: 評価対象を一意に識別する列名のリスト
         returns:
             AnnotationData: 読み込んだアノテーションデータ
         """
@@ -46,14 +52,17 @@ class AnnotationData(pd.DataFrame):
 
         result = AnnotationData(df)
         result.annotated_cols = annotated_cols
+        result.id_cols = id_cols or []
         return result
 
 
 class MultipleAnnotationData:
     """複数のアノテーションデータをまとめて管理するクラス"""
 
-    def __init__(self, annotation_data_list: list[AnnotationData]):
+    def __init__(self, annotation_data_list: list[AnnotationData], id_cols: list[str]):
+        # id_colsを初期化時に受け取ることで，compute_kappaで評価対象の照合に使う列を明示する
         self.annotation_data_list = annotation_data_list
+        self.id_cols = id_cols
 
     def compute_kappa(self, target_col: str) -> float:
         """評価者間の合致率をカッパ係数で計算するメソッド
@@ -68,25 +77,16 @@ class MultipleAnnotationData:
         raises:
             AnnotationTargetMismatchError: 評価者間で評価対象のセットが一致しない場合
         """
-        # アノテーション対象列以外をID列とし，行順ではなくIDで評価対象を照合する
-        # こうすることで，各評価者のデータフレームの行順が異なっていても正しく計算できる
-        first = self.annotation_data_list[0]
-        id_cols = [col for col in first.columns if col not in first.annotated_cols]
+        # id_colsでデータをソートして整列することで，行順が異なっても正しく評価対象を対応付ける
+        aligned = [data.sort_values(by=self.id_cols).reset_index(drop=True) for data in self.annotation_data_list]
 
-        if id_cols:
-            # 全評価者のデータをID列でソートして整列する
-            aligned = [data.sort_values(by=id_cols).reset_index(drop=True) for data in self.annotation_data_list]
-
-            # 全評価者が同じ評価対象セットを持っているか検証する
-            # 評価対象が一致しない場合，kappa係数が意味を持たないためエラーを発生させる
-            for data in aligned[1:]:
-                if not aligned[0][id_cols].equals(data[id_cols]):
-                    raise AnnotationTargetMismatchError(
-                        "評価対象が一致しません。すべての評価者が同じ評価対象を持っている必要があります。"
-                    )
-        else:
-            # ID列がない場合（全列がアノテーション対象列の場合）は行順のまま使用する
-            aligned = self.annotation_data_list
+        # 全評価者が同じ評価対象セットを持っているか検証する
+        # 評価対象が一致しない場合，kappa係数が意味を持たないためエラーを発生させる
+        for data in aligned[1:]:
+            if not aligned[0][self.id_cols].equals(data[self.id_cols]):
+                raise AnnotationTargetMismatchError(
+                    "評価対象が一致しません。すべての評価者が同じ評価対象を持っている必要があります。"
+                )
 
         # ID整列済みのデータからtarget_col列の評価値を取得する
         ratings = [data[target_col].tolist() for data in aligned]
