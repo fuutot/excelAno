@@ -59,10 +59,17 @@ class AnnotationData(pd.DataFrame):
 class MultipleAnnotationData:
     """複数のアノテーションデータをまとめて管理するクラス"""
 
-    def __init__(self, annotation_data_list: list[AnnotationData], id_cols: list[str]):
-        # id_colsを初期化時に受け取ることで，compute_kappaで評価対象の照合に使う列を明示する
+    def __init__(self, annotation_data_list: list[AnnotationData]):
+        # すべてのAnnotationDataが同じid_colsを持っていない場合，同じアノテーション対象を持っているとは言えないため，エラーを発生させる
+        has_same_id_cols = len(set(tuple(data.id_cols) for data in annotation_data_list)) == 1
+        if not has_same_id_cols:
+            raise AnnotationTargetMismatchError(
+                "すべてのAnnotationDataが同じid_colsを持っている必要があります。"
+                "すべてのAnnotationDataが同じ評価対象に対してアノテーションを行っていることを確認してください。"
+            )
+
         self.annotation_data_list = annotation_data_list
-        self.id_cols = id_cols
+        self.id_cols = annotation_data_list[0].id_cols
 
     def compute_kappa(self, target_col: str) -> float:
         """評価者間の合致率をカッパ係数で計算するメソッド
