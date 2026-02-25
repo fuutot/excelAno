@@ -52,7 +52,9 @@ class AnnotationData(pd.DataFrame):
 
         result = AnnotationData(df)
         result.annotated_cols = annotated_cols
-        result.id_cols = id_cols
+        result.id_cols = sorted(
+            id_cols
+        )  # MultipleAnnotationDataでのソート作業にて，id_colsの順序が異なると正しく対応付けできないため，id_colsはソートして保持する
         return result
 
 
@@ -85,7 +87,7 @@ class MultipleAnnotationData:
             raise ValueError("複数のAnnotationDataを提供する必要があります。")
 
         self.annotation_data_list = annotation_data_list
-        self.id_cols: list[str] = annotation_data_list[0].id_cols
+        self.id_cols: list[str] = id_cols
 
     def compute_kappa(self, target_col: str) -> float:
         """評価者間の合致率をカッパ係数で計算するメソッド
