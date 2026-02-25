@@ -173,5 +173,8 @@ class TestAnnotationTargetAlignment:
             {"query_id": ["q1", "q2", "q4"], "relevance": [1, 0, 1]}, "relevance", id_cols=["query_id"]
         )
 
-        with pytest.raises(AnnotationTargetMismatchError, match="評価対象が一致しません"):
+        with pytest.raises(
+            AnnotationTargetMismatchError,
+            match="すべてのAnnotationDataが同じ評価対象を持っている必要があります。すべてのAnnotationDataが同じ評価対象に対してアノテーションを行っていることを確認してください。",
+        ):
             MultipleAnnotationData([annotator_a, annotator_b_different_items]).compute_kappa("relevance")

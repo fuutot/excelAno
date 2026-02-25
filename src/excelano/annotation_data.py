@@ -68,8 +68,21 @@ class MultipleAnnotationData:
                 "すべてのAnnotationDataが同じ評価対象に対してアノテーションを行っていることを確認してください。"
             )
 
+        # すべてのAnnotationDataが同じアノテーション対象を持っているか確認
+        id_cols: list[str] = annotation_data_list[0].id_cols
+        base_ids = annotation_data_list[0].sort_values(by=id_cols)[id_cols].reset_index(drop=True)
+        has_same_targets = all(
+            data.sort_values(by=id_cols)[id_cols].reset_index(drop=True).equals(base_ids)
+            for data in annotation_data_list[1:]
+        )
+        if not has_same_targets:
+            raise AnnotationTargetMismatchError(
+                "すべてのAnnotationDataが同じ評価対象を持っている必要があります。"
+                "すべてのAnnotationDataが同じ評価対象に対してアノテーションを行っていることを確認してください。"
+            )
+
         self.annotation_data_list = annotation_data_list
-        self.id_cols = annotation_data_list[0].id_cols
+        self.id_cols: list[str] = annotation_data_list[0].id_cols
 
     def compute_kappa(self, target_col: str) -> float:
         """評価者間の合致率をカッパ係数で計算するメソッド
@@ -86,14 +99,6 @@ class MultipleAnnotationData:
         """
         # id_colsでデータをソートして整列することで，行順が異なっても正しく評価対象を対応付ける
         aligned = [data.sort_values(by=self.id_cols).reset_index(drop=True) for data in self.annotation_data_list]
-
-        # 全評価者が同じ評価対象セットを持っているか検証する
-        # 評価対象が一致しない場合，kappa係数が意味を持たないためエラーを発生させる
-        for data in aligned[1:]:
-            if not aligned[0][self.id_cols].equals(data[self.id_cols]):
-                raise AnnotationTargetMismatchError(
-                    "評価対象が一致しません。すべての評価者が同じ評価対象を持っている必要があります。"
-                )
 
         # ID整列済みのデータからtarget_col列の評価値を取得する
         ratings = [data[target_col].tolist() for data in aligned]
