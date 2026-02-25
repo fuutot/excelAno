@@ -81,6 +81,9 @@ class MultipleAnnotationData:
                 "すべてのAnnotationDataが同じ評価対象に対してアノテーションを行っていることを確認してください。"
             )
 
+        if len(annotation_data_list) < 2:
+            raise ValueError("複数のAnnotationDataを提供する必要があります。")
+
         self.annotation_data_list = annotation_data_list
         self.id_cols: list[str] = annotation_data_list[0].id_cols
 
