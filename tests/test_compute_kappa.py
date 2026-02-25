@@ -329,3 +329,62 @@ class TestMultipleIdColumns:
 
         # id_colsの順序が異なっていても、自動で整列されて完全一致するためkappa = 1.0
         assert kappa == pytest.approx(1.0)
+
+
+class TestRealData:
+    """実際のデータでkappaが計算できることを確認するテスト"""
+
+    def test_fleiss_kappa(self):
+        """
+        実際のデータでFleiss' kappaが計算できることを確認する
+        データソース： https://en.wikipedia.org/wiki/Fleiss%27s_kappa
+        """
+        ratings = [
+            [5, 2, 3, 2, 1, 1, 1, 1, 1, 2],
+            [5, 2, 3, 2, 1, 1, 1, 1, 1, 2],
+            [5, 3, 3, 2, 2, 1, 1, 2, 1, 3],
+            [5, 3, 4, 3, 2, 1, 2, 2, 1, 3],
+            [5, 3, 4, 3, 3, 1, 2, 2, 1, 4],
+            [5, 3, 4, 3, 3, 1, 3, 2, 1, 4],
+            [5, 3, 4, 3, 3, 1, 3, 2, 3, 4],
+            [5, 3, 4, 3, 3, 2, 3, 3, 2, 5],
+            [5, 4, 5, 3, 3, 2, 3, 3, 2, 5],
+            [5, 4, 5, 3, 3, 2, 3, 3, 2, 5],
+            [5, 4, 5, 3, 3, 2, 3, 4, 2, 5],
+            [5, 4, 5, 3, 3, 2, 4, 4, 2, 5],
+            [5, 5, 5, 4, 4, 2, 4, 5, 3, 5],
+            [5, 5, 5, 4, 5, 2, 4, 5, 4, 5],
+        ]
+
+        # ratingsがソースとなっている表と一致するのか確認
+        annotator = 14
+        assert len(ratings) == annotator
+
+        num_items = 10
+        assert all(len(rating) == num_items for rating in ratings)
+
+        real_data = [
+            [0, 0, 0, 0, 14],  # item 1
+            [0, 2, 6, 4, 2],  # item 2
+            [0, 0, 3, 5, 6],  # item 3
+            [0, 3, 9, 2, 0],  # item 4
+            [2, 2, 8, 1, 1],  # item 5
+            [7, 7, 0, 0, 0],  # item 6
+            [3, 2, 6, 3, 0],  # item 7
+            [2, 5, 3, 2, 2],  # item 8
+            [6, 5, 2, 1, 0],  # item 9
+            [0, 2, 2, 3, 7],  # item 10
+        ]
+
+        expected_counts = [[0, 0, 0, 0, 0] for _ in range(num_items)]
+        for annotator_i in range(len(ratings)):
+            for item_j in range(len(ratings[annotator_i])):
+                rating = ratings[annotator_i][item_j]
+                expected_counts[item_j][rating - 1] += 1
+
+        assert expected_counts == real_data
+
+        # fleiss_kappaの計算
+        kappa = MultipleAnnotationData._compute_fleiss_kappa(ratings)
+        kappa_ans = 0.210
+        assert kappa == pytest.approx(kappa_ans, abs=0.001)
