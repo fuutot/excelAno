@@ -29,7 +29,7 @@ class AnnotationData(pd.DataFrame):
         file_path,
         dtype: dict[str, type],
         annotated_cols: list[str],
-        id_cols: list[str] | None = None,
+        id_cols: list[str],
     ) -> "AnnotationData":
         """
         エクセル形式のアノテーションデータを読み込むメソッド
@@ -52,7 +52,7 @@ class AnnotationData(pd.DataFrame):
 
         result = AnnotationData(df)
         result.annotated_cols = annotated_cols
-        result.id_cols = id_cols or []
+        result.id_cols = id_cols
         return result
 
 
