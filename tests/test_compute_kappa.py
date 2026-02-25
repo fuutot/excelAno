@@ -44,7 +44,7 @@ def _make_annotation_data(data: dict, annotated_col: str, id_cols: list[str]) ->
     df = pd.DataFrame(data)
     result = AnnotationData(df)
     result.annotated_cols = [annotated_col]
-    result.id_cols = id_cols
+    result.id_cols = sorted(id_cols)
     return result
 
 
@@ -178,3 +178,154 @@ class TestAnnotationTargetAlignment:
             match="すべてのAnnotationDataが同じ評価対象を持っている必要があります。すべてのAnnotationDataが同じ評価対象に対してアノテーションを行っていることを確認してください。",
         ):
             MultipleAnnotationData([annotator_a, annotator_b_different_items]).compute_kappa("relevance")
+
+
+class TestMultipleIdColumns:
+    """id_colsが複数の要素からなる場合のテスト"""
+
+    def test_two_id_columns_perfect_agreement(self):
+        """query_idとdoc_idの2つのIDカラムで完全一致する場合，kappa = 1.0 になることを確認する"""
+        annotator_a = _make_annotation_data(
+            {
+                "query_id": ["q1", "q1", "q2", "q2"],
+                "doc_id": ["d1", "d2", "d1", "d2"],
+                "relevance": [1, 0, 1, 0],
+            },
+            "relevance",
+            id_cols=["query_id", "doc_id"],
+        )
+        annotator_b = _make_annotation_data(
+            {
+                "query_id": ["q1", "q1", "q2", "q2"],
+                "doc_id": ["d1", "d2", "d1", "d2"],
+                "relevance": [1, 0, 1, 0],
+            },
+            "relevance",
+            id_cols=["query_id", "doc_id"],
+        )
+        multi = MultipleAnnotationData([annotator_a, annotator_b])
+
+        kappa = multi.compute_kappa("relevance")
+
+        assert kappa == pytest.approx(1.0)
+
+    def test_two_id_columns_different_row_order(self):
+        """複数IDカラムで行順が異なる場合でも正しく整列されることを確認する"""
+        annotator_a = _make_annotation_data(
+            {
+                "query_id": ["q1", "q1", "q2", "q2"],
+                "doc_id": ["d1", "d2", "d1", "d2"],
+                "relevance": [1, 0, 1, 0],
+            },
+            "relevance",
+            id_cols=["query_id", "doc_id"],
+        )
+        # annotator_b は行順が異なる
+        annotator_b = _make_annotation_data(
+            {
+                "query_id": ["q2", "q1", "q2", "q1"],
+                "doc_id": ["d2", "d1", "d1", "d2"],
+                "relevance": [0, 1, 1, 0],
+            },
+            "relevance",
+            id_cols=["query_id", "doc_id"],
+        )
+        multi = MultipleAnnotationData([annotator_a, annotator_b])
+
+        kappa = multi.compute_kappa("relevance")
+
+        assert kappa == pytest.approx(1.0)
+
+    def test_two_id_columns_mismatched_targets_raise_error(self):
+        """複数IDカラムで評価対象が異なる場合にエラーが発生することを確認する"""
+        annotator_a = _make_annotation_data(
+            {
+                "query_id": ["q1", "q1", "q2"],
+                "doc_id": ["d1", "d2", "d1"],
+                "relevance": [1, 0, 1],
+            },
+            "relevance",
+            id_cols=["query_id", "doc_id"],
+        )
+        # annotator_b は (q2, d2) の代わりに (q2, d3) を評価している
+        annotator_b = _make_annotation_data(
+            {
+                "query_id": ["q1", "q1", "q2"],
+                "doc_id": ["d1", "d2", "d3"],
+                "relevance": [1, 0, 1],
+            },
+            "relevance",
+            id_cols=["query_id", "doc_id"],
+        )
+
+        with pytest.raises(
+            AnnotationTargetMismatchError,
+            match="すべてのAnnotationDataが同じ評価対象を持っている必要があります。すべてのAnnotationDataが同じ評価対象に対してアノテーションを行っていることを確認してください。",
+        ):
+            MultipleAnnotationData([annotator_a, annotator_b])
+
+    def test_three_id_columns_with_three_annotators(self):
+        """3つのIDカラムと3評価者でFleiss' kappaが正しく計算されることを確認する"""
+        annotator_a = _make_annotation_data(
+            {
+                "query_id": ["q1", "q1", "q2", "q2"],
+                "doc_id": ["d1", "d1", "d2", "d2"],
+                "aspect": ["a1", "a2", "a1", "a2"],
+                "rating": [1, 1, 0, 0],
+            },
+            "rating",
+            id_cols=["query_id", "doc_id", "aspect"],
+        )
+        annotator_b = _make_annotation_data(
+            {
+                "query_id": ["q1", "q1", "q2", "q2"],
+                "doc_id": ["d1", "d1", "d2", "d2"],
+                "aspect": ["a1", "a2", "a1", "a2"],
+                "rating": [1, 1, 0, 0],
+            },
+            "rating",
+            id_cols=["query_id", "doc_id", "aspect"],
+        )
+        annotator_c = _make_annotation_data(
+            {
+                "query_id": ["q1", "q1", "q2", "q2"],
+                "doc_id": ["d1", "d1", "d2", "d2"],
+                "aspect": ["a1", "a2", "a1", "a2"],
+                "rating": [1, 1, 0, 0],
+            },
+            "rating",
+            id_cols=["query_id", "doc_id", "aspect"],
+        )
+        multi = MultipleAnnotationData([annotator_a, annotator_b, annotator_c])
+
+        kappa = multi.compute_kappa("rating")
+
+        assert kappa == pytest.approx(1.0)
+
+    def test_different_id_cols_order_auto_align(self):
+        """id_colsの順序が異なる場合でも，kappa係数を計算する"""
+        annotator_a = _make_annotation_data(
+            {
+                "query_id": ["q1", "q2"],
+                "doc_id": ["d1", "d2"],
+                "relevance": [1, 0],
+            },
+            "relevance",
+            id_cols=["query_id", "doc_id"],
+        )
+        # annotator_bのid_colsの順序が異なるが、自動で合わせられるべき
+        annotator_b = _make_annotation_data(
+            {
+                "query_id": ["q1", "q2"],
+                "doc_id": ["d1", "d2"],
+                "relevance": [1, 0],
+            },
+            "relevance",
+            id_cols=["doc_id", "query_id"],
+        )
+
+        multi = MultipleAnnotationData([annotator_a, annotator_b])
+        kappa = multi.compute_kappa("relevance")
+
+        # id_colsの順序が異なっていても、自動で整列されて完全一致するためkappa = 1.0
+        assert kappa == pytest.approx(1.0)
