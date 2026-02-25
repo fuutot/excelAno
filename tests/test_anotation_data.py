@@ -33,6 +33,7 @@ def test_from_excel_reads_data(tmp_path):
         file_path=str(file_path),
         dtype=SAMPLE_DATA_DTYPE,
         annotated_cols=["relevance"],
+        id_cols=["query_id", "document_id"],
     )
 
     assert isinstance(result, AnnotationData)
@@ -58,6 +59,7 @@ def test_from_excel_applies_dtype(tmp_path):
         file_path=str(file_path),
         dtype=SAMPLE_DATA_DTYPE,
         annotated_cols=["relevance"],
+        id_cols=["query_id", "document_id"],
     )
 
     # Python標準の型はpandasのdtypeをうまく判定できないため，pd.api.typesを使う
@@ -76,6 +78,7 @@ def test_keeps_annotated_cols(tmp_path):
         file_path=str(file_path),
         dtype=SAMPLE_DATA_DTYPE,
         annotated_cols=["relevance"],
+        id_cols=["query_id", "document_id"],
     )
 
     qrels = result[["query_id", "document_id", "relevance"]]
@@ -102,11 +105,10 @@ def test_from_excel_with_incomplete_data(tmp_path):
     df.to_excel(file_path, index=False)
 
     # アノテーション対象のデータに欠損値がある場合，エラーを発生させる
-    with pytest.raises(
-        MissingValueError, match="アノテーションデータに欠損値が含まれています。"
-    ):
+    with pytest.raises(MissingValueError, match="アノテーションデータに欠損値が含まれています。"):
         AnnotationData.from_excel(
             file_path=str(file_path),
             dtype=SAMPLE_DATA_DTYPE,
             annotated_cols=["relevance"],
+            id_cols=["query_id", "document_id"],
         )

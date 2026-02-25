@@ -37,14 +37,14 @@ FLEISS_EXAMPLE_ANNOTATOR_C = {
 }
 
 
-def _make_annotation_data(data: dict, annotated_col: str, id_cols: list[str] | None = None) -> AnnotationData:
+def _make_annotation_data(data: dict, annotated_col: str, id_cols: list[str]) -> AnnotationData:
     """テスト用のAnnotationDataを作成するヘルパー関数"""
     import pandas as pd
 
     df = pd.DataFrame(data)
     result = AnnotationData(df)
     result.annotated_cols = [annotated_col]
-    result.id_cols = id_cols or []
+    result.id_cols = id_cols
     return result
 
 
@@ -53,9 +53,9 @@ class TestCohenKappaForTwoAnnotators:
 
     def test_perfect_agreement_returns_one(self):
         """2評価者が完全に一致しているとき，kappa = 1.0 になることを確認する"""
-        annotator_a = _make_annotation_data(PERFECT_AGREEMENT_ANNOTATOR_A, "relevance")
-        annotator_b = _make_annotation_data(PERFECT_AGREEMENT_ANNOTATOR_B, "relevance")
-        multi = MultipleAnnotationData([annotator_a, annotator_b], id_cols=["query_id"])
+        annotator_a = _make_annotation_data(PERFECT_AGREEMENT_ANNOTATOR_A, "relevance", id_cols=["query_id"])
+        annotator_b = _make_annotation_data(PERFECT_AGREEMENT_ANNOTATOR_B, "relevance", id_cols=["query_id"])
+        multi = MultipleAnnotationData([annotator_a, annotator_b])
 
         kappa = multi.compute_kappa("relevance")
 
@@ -63,9 +63,9 @@ class TestCohenKappaForTwoAnnotators:
 
     def test_no_agreement_returns_negative_one(self):
         """2評価者が全く一致しないとき，kappa = -1.0 になることを確認する"""
-        annotator_a = _make_annotation_data(NO_AGREEMENT_ANNOTATOR_A, "relevance")
-        annotator_b = _make_annotation_data(NO_AGREEMENT_ANNOTATOR_B, "relevance")
-        multi = MultipleAnnotationData([annotator_a, annotator_b], id_cols=["query_id"])
+        annotator_a = _make_annotation_data(NO_AGREEMENT_ANNOTATOR_A, "relevance", id_cols=["query_id"])
+        annotator_b = _make_annotation_data(NO_AGREEMENT_ANNOTATOR_B, "relevance", id_cols=["query_id"])
+        multi = MultipleAnnotationData([annotator_a, annotator_b])
 
         kappa = multi.compute_kappa("relevance")
 
@@ -73,12 +73,15 @@ class TestCohenKappaForTwoAnnotators:
 
     def test_partial_agreement_returns_value_between_minus_one_and_one(self):
         """2評価者が部分的に一致しているとき，kappaが-1〜1の範囲に収まることを確認する"""
-        import pandas as pd
 
         # 4件中3件一致（q1, q2, q3 は一致, q4 は不一致）
-        annotator_a = _make_annotation_data({"query_id": ["q1", "q2", "q3", "q4"], "relevance": [1, 1, 0, 0]}, "relevance")
-        annotator_b = _make_annotation_data({"query_id": ["q1", "q2", "q3", "q4"], "relevance": [1, 1, 0, 1]}, "relevance")
-        multi = MultipleAnnotationData([annotator_a, annotator_b], id_cols=["query_id"])
+        annotator_a = _make_annotation_data(
+            {"query_id": ["q1", "q2", "q3", "q4"], "relevance": [1, 1, 0, 0]}, "relevance", id_cols=["query_id"]
+        )
+        annotator_b = _make_annotation_data(
+            {"query_id": ["q1", "q2", "q3", "q4"], "relevance": [1, 1, 0, 1]}, "relevance", id_cols=["query_id"]
+        )
+        multi = MultipleAnnotationData([annotator_a, annotator_b])
 
         kappa = multi.compute_kappa("relevance")
 
@@ -90,10 +93,10 @@ class TestFleissKappaForThreeOrMoreAnnotators:
 
     def test_perfect_agreement_with_three_annotators_returns_one(self):
         """3評価者が完全に一致しているとき，kappa = 1.0 になることを確認する"""
-        annotator_a = _make_annotation_data(PERFECT_AGREEMENT_ANNOTATOR_A, "relevance")
-        annotator_b = _make_annotation_data(PERFECT_AGREEMENT_ANNOTATOR_B, "relevance")
-        annotator_c = _make_annotation_data(PERFECT_AGREEMENT_ANNOTATOR_A, "relevance")
-        multi = MultipleAnnotationData([annotator_a, annotator_b, annotator_c], id_cols=["query_id"])
+        annotator_a = _make_annotation_data(PERFECT_AGREEMENT_ANNOTATOR_A, "relevance", id_cols=["query_id"])
+        annotator_b = _make_annotation_data(PERFECT_AGREEMENT_ANNOTATOR_B, "relevance", id_cols=["query_id"])
+        annotator_c = _make_annotation_data(PERFECT_AGREEMENT_ANNOTATOR_A, "relevance", id_cols=["query_id"])
+        multi = MultipleAnnotationData([annotator_a, annotator_b, annotator_c])
 
         kappa = multi.compute_kappa("relevance")
 
@@ -101,10 +104,10 @@ class TestFleissKappaForThreeOrMoreAnnotators:
 
     def test_three_annotators_returns_value_between_minus_one_and_one(self):
         """3評価者の場合，kappaが-1〜1の範囲に収まることを確認する"""
-        annotator_a = _make_annotation_data(FLEISS_EXAMPLE_ANNOTATOR_A, "category")
-        annotator_b = _make_annotation_data(FLEISS_EXAMPLE_ANNOTATOR_B, "category")
-        annotator_c = _make_annotation_data(FLEISS_EXAMPLE_ANNOTATOR_C, "category")
-        multi = MultipleAnnotationData([annotator_a, annotator_b, annotator_c], id_cols=["query_id"])
+        annotator_a = _make_annotation_data(FLEISS_EXAMPLE_ANNOTATOR_A, "category", id_cols=["query_id"])
+        annotator_b = _make_annotation_data(FLEISS_EXAMPLE_ANNOTATOR_B, "category", id_cols=["query_id"])
+        annotator_c = _make_annotation_data(FLEISS_EXAMPLE_ANNOTATOR_C, "category", id_cols=["query_id"])
+        multi = MultipleAnnotationData([annotator_a, annotator_b, annotator_c])
 
         kappa = multi.compute_kappa("category")
 
@@ -112,11 +115,11 @@ class TestFleissKappaForThreeOrMoreAnnotators:
 
     def test_four_annotators_uses_fleiss_kappa(self):
         """4評価者でもFleiss' kappaが正しく計算されることを確認する"""
-        annotator_a = _make_annotation_data(PERFECT_AGREEMENT_ANNOTATOR_A, "relevance")
-        annotator_b = _make_annotation_data(PERFECT_AGREEMENT_ANNOTATOR_B, "relevance")
-        annotator_c = _make_annotation_data(PERFECT_AGREEMENT_ANNOTATOR_A, "relevance")
-        annotator_d = _make_annotation_data(PERFECT_AGREEMENT_ANNOTATOR_B, "relevance")
-        multi = MultipleAnnotationData([annotator_a, annotator_b, annotator_c, annotator_d], id_cols=["query_id"])
+        annotator_a = _make_annotation_data(PERFECT_AGREEMENT_ANNOTATOR_A, "relevance", id_cols=["query_id"])
+        annotator_b = _make_annotation_data(PERFECT_AGREEMENT_ANNOTATOR_B, "relevance", id_cols=["query_id"])
+        annotator_c = _make_annotation_data(PERFECT_AGREEMENT_ANNOTATOR_A, "relevance", id_cols=["query_id"])
+        annotator_d = _make_annotation_data(PERFECT_AGREEMENT_ANNOTATOR_B, "relevance", id_cols=["query_id"])
+        multi = MultipleAnnotationData([annotator_a, annotator_b, annotator_c, annotator_d])
 
         kappa = multi.compute_kappa("relevance")
 
@@ -129,10 +132,10 @@ class TestFleissKappaForThreeOrMoreAnnotators:
         A: [1,1,2,2,3], B: [1,2,2,3,3], C: [1,1,2,2,3]
         手動計算による期待kappa ≈ 0.595
         """
-        annotator_a = _make_annotation_data(FLEISS_EXAMPLE_ANNOTATOR_A, "category")
-        annotator_b = _make_annotation_data(FLEISS_EXAMPLE_ANNOTATOR_B, "category")
-        annotator_c = _make_annotation_data(FLEISS_EXAMPLE_ANNOTATOR_C, "category")
-        multi = MultipleAnnotationData([annotator_a, annotator_b, annotator_c], id_cols=["query_id"])
+        annotator_a = _make_annotation_data(FLEISS_EXAMPLE_ANNOTATOR_A, "category", id_cols=["query_id"])
+        annotator_b = _make_annotation_data(FLEISS_EXAMPLE_ANNOTATOR_B, "category", id_cols=["query_id"])
+        annotator_c = _make_annotation_data(FLEISS_EXAMPLE_ANNOTATOR_C, "category", id_cols=["query_id"])
+        multi = MultipleAnnotationData([annotator_a, annotator_b, annotator_c])
 
         kappa = multi.compute_kappa("category")
 
@@ -146,29 +149,29 @@ class TestAnnotationTargetAlignment:
         """行順が異なる2評価者のデータでも，IDで整列することで同じkappa値が得られることを確認する"""
         # annotator_b のデータは行順が逆になっているが，query_id で整列されるため同じ結果になるはず
         annotator_a = _make_annotation_data(
-            {"query_id": ["q1", "q2", "q3", "q4"], "relevance": [1, 0, 1, 0]}, "relevance"
+            {"query_id": ["q1", "q2", "q3", "q4"], "relevance": [1, 0, 1, 0]}, "relevance", id_cols=["query_id"]
         )
         annotator_b_reversed = _make_annotation_data(
-            {"query_id": ["q4", "q3", "q2", "q1"], "relevance": [0, 1, 0, 1]}, "relevance"
+            {"query_id": ["q4", "q3", "q2", "q1"], "relevance": [0, 1, 0, 1]}, "relevance", id_cols=["query_id"]
         )
         annotator_b_aligned = _make_annotation_data(
-            {"query_id": ["q1", "q2", "q3", "q4"], "relevance": [1, 0, 1, 0]}, "relevance"
+            {"query_id": ["q1", "q2", "q3", "q4"], "relevance": [1, 0, 1, 0]}, "relevance", id_cols=["query_id"]
         )
 
-        kappa_reversed = MultipleAnnotationData([annotator_a, annotator_b_reversed], id_cols=["query_id"]).compute_kappa("relevance")
-        kappa_aligned = MultipleAnnotationData([annotator_a, annotator_b_aligned], id_cols=["query_id"]).compute_kappa("relevance")
+        kappa_reversed = MultipleAnnotationData([annotator_a, annotator_b_reversed]).compute_kappa("relevance")
+        kappa_aligned = MultipleAnnotationData([annotator_a, annotator_b_aligned]).compute_kappa("relevance")
 
         assert kappa_reversed == pytest.approx(kappa_aligned)
 
     def test_mismatched_evaluation_targets_raise_error(self):
         """評価者間で評価対象が異なる場合にエラーが発生することを確認する"""
         annotator_a = _make_annotation_data(
-            {"query_id": ["q1", "q2", "q3"], "relevance": [1, 0, 1]}, "relevance"
+            {"query_id": ["q1", "q2", "q3"], "relevance": [1, 0, 1]}, "relevance", id_cols=["query_id"]
         )
         # annotator_b は q3 の代わりに q4 を評価している
         annotator_b_different_items = _make_annotation_data(
-            {"query_id": ["q1", "q2", "q4"], "relevance": [1, 0, 1]}, "relevance"
+            {"query_id": ["q1", "q2", "q4"], "relevance": [1, 0, 1]}, "relevance", id_cols=["query_id"]
         )
 
         with pytest.raises(AnnotationTargetMismatchError, match="評価対象が一致しません"):
-            MultipleAnnotationData([annotator_a, annotator_b_different_items], id_cols=["query_id"]).compute_kappa("relevance")
+            MultipleAnnotationData([annotator_a, annotator_b_different_items]).compute_kappa("relevance")
