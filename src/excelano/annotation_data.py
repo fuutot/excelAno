@@ -48,6 +48,10 @@ class AnnotationData(pd.DataFrame):
         if df[annotated_cols].isnull().any().any():
             raise MissingValueError("アノテーションデータに欠損値が含まれています。")
 
+        # id_colsで一意に識別できるか確認
+        if df.duplicated(subset=id_cols).any():
+            raise ValueError("id_colsで指定された列の組み合わせで一意に識別できません。")
+
         df = df.astype(dtype)
 
         result = AnnotationData(df)
