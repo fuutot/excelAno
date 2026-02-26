@@ -337,7 +337,7 @@ class TestRealData:
     def test_fleiss_kappa(self):
         """
         実際のデータでFleiss' kappaが計算できることを確認する
-        データソース： https://en.wikipedia.org/wiki/Fleiss%27s_kappa
+        データソース： https://en.wikipedia.org/wiki/Fleiss%27s_kappa#Worked_example
         """
         ratings = [
             [5, 2, 3, 2, 1, 1, 1, 1, 1, 2],
@@ -388,3 +388,27 @@ class TestRealData:
         kappa = MultipleAnnotationData._compute_fleiss_kappa(ratings)
         kappa_ans = 0.210
         assert kappa == pytest.approx(kappa_ans, abs=0.001)
+
+    def test_cohen_kappa(self):
+        """
+        実際のデータでCohen's kappaが計算できることを確認する
+        データソース： https://en.wikipedia.org/wiki/Cohen%27s_kappa#Example
+        """
+        # 評価者Aのラベル配列
+        ratings1 = (
+            ["Yes"] * 20  # BもYesと答えた20件
+            + ["Yes"] * 5  # BはNoと答えた5件
+            + ["No"] * 10  # BはYesと答えた10件
+            + ["No"] * 15  # BもNoと答えた15件
+        )
+
+        # 評価者Bのラベル配列
+        ratings2 = (
+            ["Yes"] * 20  # AもYesと答えた20件
+            + ["No"] * 5  # AはYesと答えた5件
+            + ["Yes"] * 10  # AはNoと答えた10件
+            + ["No"] * 15  # AもNoと答えた15件
+        )
+
+        kappa = MultipleAnnotationData._compute_cohen_kappa(ratings1, ratings2)
+        assert kappa == pytest.approx(0.4, abs=0.001)
