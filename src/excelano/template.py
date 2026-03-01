@@ -33,7 +33,18 @@ class Template(pd.DataFrame):
         args:
             file_path: 保存するエクセルファイルのパス
         """
-        # TODO: アノテーションファイルに必要な書式設定を追加する
-        # 例: セルの背景色を変更する，列幅を調整する,特定の列の値は変化させないなど
+        with pd.ExcelWriter(file_path, engine="openpyxl") as writer:
+            # DataFrameをエクセルファイルに書き込む
+            super().to_excel(writer, index=False)
 
-        self.to_excel(file_path, index=False)
+
+if __name__ == "__main__":  # テンプレートの作成例
+    df = pd.DataFrame(
+        {
+            "id": [1, 2, 3],
+            "text": ["This is a sample text.", "Another example.", "More data."],
+            "label": ["", "", ""],
+        }
+    )
+    template = Template.from_dataframe(df)
+    template.to_excel("output/annotation_template.xlsx")
