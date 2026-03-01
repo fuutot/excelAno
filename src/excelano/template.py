@@ -1,5 +1,5 @@
 import pandas as pd
-from openpyxl.styles import Border, Side
+from openpyxl.styles import Border, Font, Side
 
 
 class Template(pd.DataFrame):
@@ -38,6 +38,8 @@ class Template(pd.DataFrame):
             # DataFrameをエクセルファイルに書き込む
             super().to_excel(writer, index=False)
 
+            worksheet = writer.sheets["Sheet1"]
+
             # 罫線のスタイルを定義
             thin_border = Border(
                 left=Side(style="thin"),
@@ -46,9 +48,16 @@ class Template(pd.DataFrame):
                 bottom=Side(style="thin"),
             )
 
-            # シートを取得して、すべてのセルに罫線を適用
-            worksheet = writer.sheets["Sheet1"]
-            for row in worksheet.iter_rows():
+            # ヘッダーの書式を設定
+            bold_font = Font(bold=True)
+            for cell in worksheet[1]:
+                cell.font = bold_font
+                cell.border = thin_border
+
+            # ヘッダー以外には罫線を適用
+            for row in worksheet.iter_rows(
+                min_row=2, max_row=worksheet.max_row, min_col=1, max_col=worksheet.max_column
+            ):
                 for cell in row:
                     cell.border = thin_border
 
