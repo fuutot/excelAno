@@ -6,28 +6,53 @@ from openpyxl.utils import get_column_letter
 class Template(pd.DataFrame):
     """アノテーション用のエクセルファイルのテンプレートを作成するためのクラス"""
 
+    _metadata = ["annotation_cols", "id_cols"]  # pandasのDataFrameに属性を保持させるための変数
+
+    @property
+    def _constructor(self):
+        return Template
+
     @staticmethod
-    def from_dataframe(df: pd.DataFrame) -> "Template":
+    def from_dataframe(df: pd.DataFrame, id_cols: list[str], annotation_cols: list[str]) -> "Template":
         """
         DataFrameからテンプレートを作成するメソッド
         args:
             df: テンプレートの元となるDataFrame
+            id_cols: 評価対象を一意に識別する列名のリスト
+            annotation_cols: アノテーション対象列名のリスト．
         returns:
             Template: 作成したテンプレート
         """
-        return Template(df)
+        template = Template(df)
+
+        # id_colsで一意に識別できるか確認
+        if template.duplicated(subset=id_cols).any():
+            raise ValueError("id_colsで指定された列の組み合わせで一意に識別できません。")
+
+        # アノテーション対象の列に値が入っていないか確認
+        if template[annotation_cols].notnull().any().any():
+            raise ValueError(
+                "annotation_colsで指定された列に値が入っています。アノテーション対象の列は空にしてください。"
+            )
+
+        template.annotation_cols = annotation_cols
+        template.id_cols = id_cols
+        return template
 
     @staticmethod
-    def from_csv(file_path: str) -> "Template":
+    def from_csv(file_path: str, id_cols: list[str], annotation_cols: list[str], **kwargs) -> "Template":
         """
         CSVファイルからテンプレートを作成するメソッド
         args:
             file_path: CSVファイルのパス
+            id_cols: 評価対象を一意に識別する列名のリスト
+            annotation_cols: アノテーション対象列名のリスト．
+            **kwargs: pandas.read_csvに渡す引数
         returns:
             Template: 作成したテンプレート
         """
-        df = pd.read_csv(file_path)
-        return Template(df)
+        df = pd.read_csv(file_path, **kwargs)
+        return Template.from_dataframe(df, id_cols=id_cols, annotation_cols=annotation_cols)
 
     def to_excel(self, file_path: str) -> None:
         """
@@ -105,5 +130,5 @@ if __name__ == "__main__":  # テンプレートの作成例
             "label": ["", "", ""],
         }
     )
-    template = Template.from_dataframe(df)
+    template = Template.from_dataframe(df, id_cols=["id"], annotation_cols=["label"])
     template.to_excel("output/annotation_template.xlsx")
