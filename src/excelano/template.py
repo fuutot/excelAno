@@ -128,7 +128,9 @@ class Template(pd.DataFrame):
                 is_annotation_col = self.columns[col_num - 1] in self.annotation_cols
 
                 for cell in column:
-                    cell.protection = Protection(locked=not is_annotation_col)
+                    # ヘッダー行は常にロックし、アノテーション対象列のデータ行のみ編集可能にする
+                    is_header = cell.row == 1
+                    cell.protection = Protection(locked=is_header or not is_annotation_col)
 
             # シートを保護
             worksheet.protection.sheet = True
