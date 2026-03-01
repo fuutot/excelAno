@@ -1,5 +1,6 @@
 import pandas as pd
-from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+from openpyxl.styles import Alignment, Border, Font, PatternFill, Side, Protection
+from openpyxl.worksheet.worksheet import Worksheet
 from openpyxl.utils import get_column_letter
 
 
@@ -64,7 +65,7 @@ class Template(pd.DataFrame):
             # DataFrameをエクセルファイルに書き込む
             super().to_excel(writer, index=False)
 
-            worksheet = writer.sheets["Sheet1"]
+            worksheet: Worksheet = writer.sheets["Sheet1"]
 
             # 罫線のスタイルを定義
             thin_border = Border(
@@ -121,13 +122,25 @@ class Template(pd.DataFrame):
             # ヘッダーの行を固定
             worksheet.freeze_panes = "A2"
 
+            # アノテーション対象列以外は読み取り専用にする
+            for col_num, column in enumerate(worksheet.columns, 1):
+                # この列がアノテーション対象かを判定
+                is_annotation_col = self.columns[col_num - 1] in self.annotation_cols
+
+                for cell in column:
+                    cell.protection = Protection(locked=not is_annotation_col)
+
+            # シートを保護
+            worksheet.protection.sheet = True
+            worksheet.protection.enable()
+
 
 if __name__ == "__main__":  # テンプレートの作成例
     df = pd.DataFrame(
         {
             "id": [1, 2, 3],
             "text": ["This is a sample text.", "Another example.", "More data."],
-            "label": ["", "", ""],
+            "label": [None, None, None],
         }
     )
     template = Template.from_dataframe(df, id_cols=["id"], annotation_cols=["label"])
