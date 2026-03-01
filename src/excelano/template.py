@@ -1,5 +1,6 @@
 import pandas as pd
-from openpyxl.styles import Border, Font, Side
+from openpyxl.styles import Alignment, Border, Font, Side
+from openpyxl.utils import get_column_letter
 
 
 class Template(pd.DataFrame):
@@ -60,6 +61,30 @@ class Template(pd.DataFrame):
             ):
                 for cell in row:
                     cell.border = thin_border
+
+            # 列の最大文字列長を計算して、文字折り返しが必要な列を判定
+            max_char_limit = 20  # この値を超える列に対して文字折り返しを適用
+
+            for col_num, column in enumerate(worksheet.columns, 1):
+                max_length = 0
+                column_letter = get_column_letter(col_num)
+
+                for cell in column:
+                    try:
+                        if len(str(cell.value)) > max_length:
+                            max_length = len(str(cell.value))
+                    except TypeError:
+                        pass
+
+                # 文字列が長い列にのみ文字折り返しを適用
+                if max_length > max_char_limit:
+                    for cell in column:
+                        cell.alignment = Alignment(wrap_text=True)
+                    # 列幅を適切に設定
+                    worksheet.column_dimensions[column_letter].width = 30
+                else:
+                    # 短い列は自動調整
+                    worksheet.column_dimensions[column_letter].width = max_length + 2
 
             # ヘッダーの行を固定
             worksheet.freeze_panes = "A2"
