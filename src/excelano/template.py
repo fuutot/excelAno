@@ -1,5 +1,5 @@
 import pandas as pd
-from openpyxl.styles import Alignment, Border, Font, Side
+from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 
 
@@ -50,17 +50,24 @@ class Template(pd.DataFrame):
             )
 
             # ヘッダーの書式を設定
-            bold_font = Font(bold=True)
+            bold_font = Font(bold=True, color="FFFFFF")  # 白いテキスト
+            header_fill = PatternFill(start_color="1F4E78", fill_type="solid")  # 濃い青
             for cell in worksheet[1]:
                 cell.font = bold_font
                 cell.border = thin_border
+                cell.fill = header_fill
 
-            # ヘッダー以外には罫線を適用
-            for row in worksheet.iter_rows(
-                min_row=2, max_row=worksheet.max_row, min_col=1, max_col=worksheet.max_column
+            # ヘッダー以外には罫線を適用し、行ごとに色を交互に設定
+            light_blue_fill = PatternFill(start_color="D9E1F2", fill_type="solid")  # 薄い青
+            for row_num, row in enumerate(
+                worksheet.iter_rows(min_row=2, max_row=worksheet.max_row, min_col=1, max_col=worksheet.max_column),
+                start=2,
             ):
                 for cell in row:
                     cell.border = thin_border
+                    # 偶数行に薄い青を適用（2,4,6...）
+                    if row_num % 2 == 0:
+                        cell.fill = light_blue_fill
 
             # 列の最大文字列長を計算して、文字折り返しが必要な列を判定
             max_char_limit = 20  # この値を超える列に対して文字折り返しを適用
