@@ -61,6 +61,9 @@ class Template(pd.DataFrame):
                 for cell in row:
                     cell.border = thin_border
 
+            # ヘッダーの行を固定
+            worksheet.freeze_panes = "A2"
+
 
 if __name__ == "__main__":  # テンプレートの作成例
     df = pd.DataFrame(
