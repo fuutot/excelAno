@@ -1,7 +1,13 @@
+from __future__ import annotations
+
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pandas as pd
+
+if TYPE_CHECKING:
+    from excelano.annotation_data import AnnotationData
+    from excelano.template import Template
 
 
 class SchemaValidationError(ValueError):
@@ -89,19 +95,19 @@ class Schema:
     def __post_init__(self):
         self._column_map = {col.name: col for col in self.columns}
 
-    def cast_dtypes(self, df: pd.DataFrame) -> pd.DataFrame:
-        """DataFrameの各列をColumnのdtypeに型キャストする
+    def cast_dtypes(self, data: AnnotationData | Template) -> AnnotationData | Template:
+        """AnnotationData/Templateの各列をColumnのdtypeに型キャストする
 
         args:
-            df: キャスト対象のDataFrame
+            data: キャスト対象のAnnotationDataまたはTemplate
         returns:
-            pd.DataFrame: 型キャスト後のDataFrame（元のDataFrameは変更されない）
+            AnnotationData | Template: 型キャスト後のオブジェクト（元のオブジェクトは変更されない）
         """
-        df = df.copy()
+        data = data.copy()
         for col in self.columns:
-            if col.dtype is not None and col.name in df.columns:
-                df[col.name] = col.cast_dtype(df[col.name])
-        return df
+            if col.dtype is not None and col.name in data.columns:
+                data[col.name] = col.cast_dtype(data[col.name])
+        return data
 
     def get_dtype_dict(self) -> dict[str, type]:
         """Columnからdtype辞書を生成する
@@ -121,23 +127,23 @@ class Schema:
         """
         return self._column_map.get(col_name)
 
-    def validate(self, df: pd.DataFrame) -> list[str]:
-        """DataFrame全体を検証し、エラーメッセージのリストを返す
+    def validate(self, data: AnnotationData | Template) -> list[str]:
+        """AnnotationData/Template全体を検証し、エラーメッセージのリストを返す
 
         args:
-            df: 検証対象のDataFrame
+            data: 検証対象のAnnotationDataまたはTemplate
         returns:
             list[str]: エラーメッセージのリスト（エラーがなければ空リスト）
         """
         errors: list[str] = []
 
         # ID列の一意性チェック
-        if df.duplicated(subset=self.id_cols).any():
+        if data.duplicated(subset=self.id_cols).any():
             errors.append("id_colsで指定された列の組み合わせで一意に識別できません。")
 
         # 各列のバリデーション
         for col in self.columns:
-            if col.name in df.columns:
-                errors.extend(col.validate(df[col.name]))
+            if col.name in data.columns:
+                errors.extend(col.validate(data[col.name]))
 
         return errors

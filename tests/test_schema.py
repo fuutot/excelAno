@@ -89,7 +89,8 @@ class TestSchema:
             annotation_cols=["relevance"],
         )
         df = pd.DataFrame({"id": [1, 2, 3], "relevance": [0, 1, 0]})
-        errors = schema.validate(df)
+        data = AnnotationData(df)
+        errors = schema.validate(data)
         assert errors == []
 
     def test_schema_validate_duplicate_ids(self):
@@ -100,7 +101,8 @@ class TestSchema:
             annotation_cols=[],
         )
         df = pd.DataFrame({"id": [1, 1, 3]})
-        errors = schema.validate(df)
+        data = AnnotationData(df)
+        errors = schema.validate(data)
         assert len(errors) == 1
         assert "一意に識別できません" in errors[0]
 
@@ -115,7 +117,8 @@ class TestSchema:
             annotation_cols=["relevance"],
         )
         df = pd.DataFrame({"id": [1, 2, 3], "relevance": [0, 1, 5]})
-        errors = schema.validate(df)
+        data = AnnotationData(df)
+        errors = schema.validate(data)
         assert len(errors) == 1
         assert "3 行目" in errors[0]
 

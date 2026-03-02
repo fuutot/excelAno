@@ -44,15 +44,16 @@ class Template(pd.DataFrame):
                 "annotation_colsで指定された列に値が入っています。アノテーション対象の列は空にしてください。"
             )
 
-        # Schemaによるバリデーション
-        if schema is not None:
-            errors = schema.validate(df)
-            if errors:
-                raise SchemaValidationError(errors)
-
         template.annotation_cols = annotation_cols
         template.id_cols = id_cols
         template.schema = schema
+
+        # Schemaによるバリデーション
+        if schema is not None:
+            errors = schema.validate(template)
+            if errors:
+                raise SchemaValidationError(errors)
+
         return template
 
     @staticmethod

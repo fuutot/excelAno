@@ -56,19 +56,20 @@ class AnnotationData(pd.DataFrame):
         if df.duplicated(subset=id_cols).any():
             raise ValueError("id_colsで指定された列の組み合わせで一意に識別できません。")
 
-        # Schemaによる型キャストとバリデーション
-        if schema is not None:
-            df = schema.cast_dtypes(df)
-            errors = schema.validate(df)
-            if errors:
-                raise SchemaValidationError(errors)
-
         result = AnnotationData(df)
         result.annotated_cols = annotated_cols
         result.id_cols = sorted(
             id_cols
         )  # MultipleAnnotationDataでのソート作業にて，id_colsの順序が異なると正しく対応付けできないため，id_colsはソートして保持する
         result.schema = schema
+
+        # Schemaによる型キャストとバリデーション
+        if schema is not None:
+            result = schema.cast_dtypes(result)
+            errors = schema.validate(result)
+            if errors:
+                raise SchemaValidationError(errors)
+
         return result
 
 
