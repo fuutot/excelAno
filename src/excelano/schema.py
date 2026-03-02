@@ -30,6 +30,8 @@ class Column:
     def validate(self, series: pd.Series) -> list[str]:
         """Seriesを検証し、エラーメッセージのリストを返す
 
+        行番号はデータ行の1行目からの通し番号（1始まり）で出力される。
+
         args:
             series: 検証対象のpandas Series
         returns:

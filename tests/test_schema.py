@@ -57,6 +57,8 @@ class TestColumn:
         errors = col.validate(series)
         assert len(errors) == 1
         assert "1 行目" in errors[0]
+        assert "'value'" in errors[0]
+        assert "abc" in errors[0]
 
     def test_column_validate_no_constraints(self):
         """制約なしの場合にバリデーションが通ることを確認"""
