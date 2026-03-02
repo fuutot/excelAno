@@ -36,12 +36,19 @@ class Column:
     def cast_dtype(self, series: pd.Series) -> pd.Series:
         """Seriesをこの列のdtypeに型キャストする
 
+        Null値が含まれる場合は、非Null値のみ型キャストし、Null値はそのまま保持する。
+
         args:
             series: キャスト対象のpandas Series
         returns:
             pd.Series: 型キャスト後のSeries（dtypeが未設定の場合はそのまま返す）
         """
         if self.dtype is not None:
+            if series.isna().any():
+                result = series.copy()
+                mask = series.notna()
+                result[mask] = series[mask].astype(self.dtype)
+                return result
             return series.astype(self.dtype)
         return series
 
@@ -130,11 +137,12 @@ class Schema:
     def validate(self, data: AnnotationData | Template) -> list[str]:
         """AnnotationData/Template全体を検証し、エラーメッセージのリストを返す
 
+        型キャスト（Columnにdtypeが設定されている場合）を行った上でバリデーションを実行する。
         AnnotationDataの場合はアノテーション対象列にNull値がないことを確認する（アノテーション漏れ検知）。
         Templateの場合はアノテーション対象列が全てNull値であることを確認する。
 
         args:
-            data: 検証対象のAnnotationDataまたはTemplate
+            data: 検証対象のAnnotationDataまたはTemplate（型キャストにより内容が変更される場合がある）
         returns:
             list[str]: エラーメッセージのリスト（エラーがなければ空リスト）
         """
@@ -142,6 +150,14 @@ class Schema:
         from excelano.template import Template
 
         errors: list[str] = []
+
+        # 型キャスト
+        for col in self.columns:
+            if col.dtype is not None and col.name in data.columns:
+                try:
+                    data[col.name] = col.cast_dtype(data[col.name])
+                except (ValueError, TypeError) as e:
+                    errors.append(f"列 '{col.name}' の型キャストに失敗しました（{col.dtype.__name__}）: {e}")
 
         # ID列の一意性チェック
         if data.duplicated(subset=self.id_cols).any():

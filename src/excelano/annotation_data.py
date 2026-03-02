@@ -63,9 +63,8 @@ class AnnotationData(pd.DataFrame):
         )  # MultipleAnnotationDataでのソート作業にて，id_colsの順序が異なると正しく対応付けできないため，id_colsはソートして保持する
         result.schema = schema
 
-        # Schemaによる型キャストとバリデーション
+        # Schemaによるバリデーション（型キャストもvalidate内で実行される）
         if schema is not None:
-            result = schema.cast_dtypes(result)
             errors = schema.validate(result)
             if errors:
                 raise SchemaValidationError(errors)
