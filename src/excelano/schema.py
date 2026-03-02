@@ -130,16 +130,41 @@ class Schema:
     def validate(self, data: AnnotationData | Template) -> list[str]:
         """AnnotationData/Template全体を検証し、エラーメッセージのリストを返す
 
+        AnnotationDataの場合はアノテーション対象列にNull値がないことを確認する（アノテーション漏れ検知）。
+        Templateの場合はアノテーション対象列が全てNull値であることを確認する。
+
         args:
             data: 検証対象のAnnotationDataまたはTemplate
         returns:
             list[str]: エラーメッセージのリスト（エラーがなければ空リスト）
         """
+        from excelano.annotation_data import AnnotationData
+        from excelano.template import Template
+
         errors: list[str] = []
 
         # ID列の一意性チェック
         if data.duplicated(subset=self.id_cols).any():
             errors.append("id_colsで指定された列の組み合わせで一意に識別できません。")
+
+        # AnnotationData: アノテーション対象列にNull値がないことを確認
+        if isinstance(data, AnnotationData):
+            for col_name in self.annotation_cols:
+                if col_name in data.columns:
+                    null_mask = data[col_name].isnull()
+                    for i, is_null in enumerate(null_mask, start=1):
+                        if is_null:
+                            errors.append(
+                                f"列 '{col_name}' の {i} 行目: Null値は許容されていません。アノテーション漏れの可能性があります。"
+                            )
+
+        # Template: アノテーション対象列が全てNull値であることを確認
+        if isinstance(data, Template):
+            for col_name in self.annotation_cols:
+                if col_name in data.columns and data[col_name].notnull().any():
+                    errors.append(
+                        f"列 '{col_name}' にNull以外の値が含まれています。アノテーション対象の列は空にしてください。"
+                    )
 
         # 各列のバリデーション
         for col in self.columns:

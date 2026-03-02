@@ -122,6 +122,53 @@ class TestSchema:
         assert len(errors) == 1
         assert "3 行目" in errors[0]
 
+    def test_schema_validate_annotation_data_rejects_null(self):
+        """AnnotationDataのアノテーション対象列でNull値がエラーになることを確認"""
+        schema = Schema(
+            columns=[
+                Column(name="id", dtype=int),
+                Column(name="relevance", dtype=int, allowed_values=[0, 1]),
+            ],
+            id_cols=["id"],
+            annotation_cols=["relevance"],
+        )
+        df = pd.DataFrame({"id": [1, 2, 3], "relevance": [0, None, 1]})
+        data = AnnotationData(df)
+        errors = schema.validate(data)
+        assert len(errors) >= 1
+        assert any("2 行目" in e and "Null" in e for e in errors)
+
+    def test_schema_validate_template_requires_null_annotation_cols(self):
+        """Templateのアノテーション対象列が全てNull値であることを確認"""
+        schema = Schema(
+            columns=[
+                Column(name="id", dtype=int),
+                Column(name="label", allowed_values=[0, 1]),
+            ],
+            id_cols=["id"],
+            annotation_cols=["label"],
+        )
+        df = pd.DataFrame({"id": [1, 2, 3], "label": [None, None, None]})
+        template = Template(df)
+        errors = schema.validate(template)
+        assert errors == []
+
+    def test_schema_validate_template_rejects_non_null_annotation_cols(self):
+        """Templateのアノテーション対象列にNull以外の値があるとエラーになることを確認"""
+        schema = Schema(
+            columns=[
+                Column(name="id", dtype=int),
+                Column(name="label", allowed_values=[0, 1]),
+            ],
+            id_cols=["id"],
+            annotation_cols=["label"],
+        )
+        df = pd.DataFrame({"id": [1, 2, 3], "label": [0, None, None]})
+        template = Template(df)
+        errors = schema.validate(template)
+        assert len(errors) >= 1
+        assert any("label" in e and "空にしてください" in e for e in errors)
+
     def test_schema_get_dtype_dict(self):
         """get_dtype_dictが正しい辞書を返すことを確認"""
         schema = Schema(
