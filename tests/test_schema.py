@@ -341,6 +341,7 @@ class TestTemplateWithSchema:
         dv = worksheet.data_validations.dataValidation[0]
         assert dv.type == "list"
         assert dv.formula1 == '"0,1"'
+        assert dv.showErrorMessage is True
 
     def test_to_excel_without_schema_no_data_validation(self, tmp_path):
         """Schema無しの場合にデータバリデーションが設定されないことを確認"""

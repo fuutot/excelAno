@@ -164,6 +164,9 @@ class Template(pd.DataFrame):
                         col_letter = get_column_letter(col_idx)
                         formula = ",".join(str(v) for v in col.allowed_values)
                         dv = DataValidation(type="list", formula1=f'"{formula}"', allow_blank=True)
+                        dv.showErrorMessage = True
+                        dv.errorTitle = "入力エラー"
+                        dv.error = f"許容値: {formula} のいずれかを入力してください。"
                         max_data_row = len(self) + 1
                         dv.add(f"{col_letter}2:{col_letter}{max_data_row}")
                         worksheet.add_data_validation(dv)
