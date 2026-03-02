@@ -27,6 +27,18 @@ class Column:
     dtype: type | None = None
     allowed_values: list[Any] | None = None
 
+    def cast_dtype(self, series: pd.Series) -> pd.Series:
+        """Seriesをこの列のdtypeに型キャストする
+
+        args:
+            series: キャスト対象のpandas Series
+        returns:
+            pd.Series: 型キャスト後のSeries（dtypeが未設定の場合はそのまま返す）
+        """
+        if self.dtype is not None:
+            return series.astype(self.dtype)
+        return series
+
     def validate(self, series: pd.Series) -> list[str]:
         """Seriesを検証し、エラーメッセージのリストを返す
 
@@ -76,6 +88,20 @@ class Schema:
 
     def __post_init__(self):
         self._column_map = {col.name: col for col in self.columns}
+
+    def cast_dtypes(self, df: pd.DataFrame) -> pd.DataFrame:
+        """DataFrameの各列をColumnのdtypeに型キャストする
+
+        args:
+            df: キャスト対象のDataFrame
+        returns:
+            pd.DataFrame: 型キャスト後のDataFrame（元のDataFrameは変更されない）
+        """
+        df = df.copy()
+        for col in self.columns:
+            if col.dtype is not None and col.name in df.columns:
+                df[col.name] = col.cast_dtype(df[col.name])
+        return df
 
     def get_dtype_dict(self) -> dict[str, type]:
         """Columnからdtype辞書を生成する

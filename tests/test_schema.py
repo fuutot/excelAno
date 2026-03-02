@@ -180,7 +180,6 @@ class TestAnnotationDataWithSchema:
 
         result = AnnotationData.from_excel(
             file_path=str(file_path),
-            dtype={"id": int, "text": str, "relevance": int},
             annotated_cols=["relevance"],
             id_cols=["id"],
             schema=schema,
@@ -211,7 +210,6 @@ class TestAnnotationDataWithSchema:
         with pytest.raises(SchemaValidationError) as exc_info:
             AnnotationData.from_excel(
                 file_path=str(file_path),
-                dtype={"id": int, "text": str, "relevance": int},
                 annotated_cols=["relevance"],
                 id_cols=["id"],
                 schema=schema,
@@ -232,7 +230,6 @@ class TestAnnotationDataWithSchema:
 
         result = AnnotationData.from_excel(
             file_path=str(file_path),
-            dtype={"id": int, "text": str, "relevance": int},
             annotated_cols=["relevance"],
             id_cols=["id"],
         )

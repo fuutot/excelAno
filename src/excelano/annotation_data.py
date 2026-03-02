@@ -31,7 +31,6 @@ class AnnotationData(pd.DataFrame):
     @staticmethod
     def from_excel(
         file_path,
-        dtype: dict[str, type],
         annotated_cols: list[str],
         id_cols: list[str],
         schema: Schema | None = None,
@@ -40,7 +39,6 @@ class AnnotationData(pd.DataFrame):
         エクセル形式のアノテーションデータを読み込むメソッド
         args:
             file_path: エクセルファイルのパス
-            dtype: 列名とデータ型の辞書
             annotated_cols: アノテーション対象の列名のリスト
             id_cols: 評価対象を一意に識別する列名のリスト
             schema: バリデーション用のSchemaオブジェクト（任意）
@@ -58,10 +56,9 @@ class AnnotationData(pd.DataFrame):
         if df.duplicated(subset=id_cols).any():
             raise ValueError("id_colsで指定された列の組み合わせで一意に識別できません。")
 
-        df = df.astype(dtype)
-
-        # Schemaによるバリデーション
+        # Schemaによる型キャストとバリデーション
         if schema is not None:
+            df = schema.cast_dtypes(df)
             errors = schema.validate(df)
             if errors:
                 raise SchemaValidationError(errors)
