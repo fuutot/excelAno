@@ -1,26 +1,34 @@
+from __future__ import annotations
+
 import pandas as pd
-from openpyxl.styles import Alignment, Border, Font, PatternFill, Side, Protection
-from openpyxl.worksheet.worksheet import Worksheet
+from openpyxl.styles import Alignment, Border, Font, PatternFill, Protection, Side
 from openpyxl.utils import get_column_letter
+from openpyxl.worksheet.datavalidation import DataValidation
+from openpyxl.worksheet.worksheet import Worksheet
+
+from excelano.schema import Schema, SchemaValidationError
 
 
 class Template(pd.DataFrame):
     """アノテーション用のエクセルファイルのテンプレートを作成するためのクラス"""
 
-    _metadata = ["annotation_cols", "id_cols"]  # pandasのDataFrameに属性を保持させるための変数
+    _metadata = ["annotation_cols", "id_cols", "schema"]  # pandasのDataFrameに属性を保持させるための変数
 
     @property
     def _constructor(self):
         return Template
 
     @staticmethod
-    def from_dataframe(df: pd.DataFrame, id_cols: list[str], annotation_cols: list[str]) -> "Template":
+    def from_dataframe(
+        df: pd.DataFrame, id_cols: list[str], annotation_cols: list[str], schema: Schema | None = None
+    ) -> Template:
         """
         DataFrameからテンプレートを作成するメソッド
         args:
             df: テンプレートの元となるDataFrame
             id_cols: 評価対象を一意に識別する列名のリスト
             annotation_cols: アノテーション対象列名のリスト．
+            schema: バリデーション用のSchemaオブジェクト（任意）
         returns:
             Template: 作成したテンプレート
         """
@@ -38,22 +46,33 @@ class Template(pd.DataFrame):
 
         template.annotation_cols = annotation_cols
         template.id_cols = id_cols
+        template.schema = schema
+
+        # Schemaによるバリデーション
+        if schema is not None:
+            errors = schema.validate(template)
+            if errors:
+                raise SchemaValidationError(errors)
+
         return template
 
     @staticmethod
-    def from_csv(file_path: str, id_cols: list[str], annotation_cols: list[str], **kwargs) -> "Template":
+    def from_csv(
+        file_path: str, id_cols: list[str], annotation_cols: list[str], schema: Schema | None = None, **kwargs
+    ) -> Template:
         """
         CSVファイルからテンプレートを作成するメソッド
         args:
             file_path: CSVファイルのパス
             id_cols: 評価対象を一意に識別する列名のリスト
             annotation_cols: アノテーション対象列名のリスト．
+            schema: バリデーション用のSchemaオブジェクト（任意）
             **kwargs: pandas.read_csvに渡す引数
         returns:
             Template: 作成したテンプレート
         """
         df = pd.read_csv(file_path, **kwargs)
-        return Template.from_dataframe(df, id_cols=id_cols, annotation_cols=annotation_cols)
+        return Template.from_dataframe(df, id_cols=id_cols, annotation_cols=annotation_cols, schema=schema)
 
     def to_excel(self, file_path: str) -> None:
         """
@@ -136,8 +155,26 @@ class Template(pd.DataFrame):
             worksheet.protection.sheet = True
             worksheet.protection.enable()
 
+            # Schemaが設定されている場合，アノテーション対象列に入力規制を追加する
+            if hasattr(self, "schema") and self.schema is not None:
+                for col_name in self.annotation_cols:
+                    col = self.schema.get_column(col_name)
+                    if col is not None and col.allowed_values is not None:
+                        col_idx = list(self.columns).index(col_name) + 1
+                        col_letter = get_column_letter(col_idx)
+                        formula = ",".join(str(v) for v in col.allowed_values)
+                        dv = DataValidation(type="list", formula1=f'"{formula}"', allow_blank=True)
+                        dv.showErrorMessage = True
+                        dv.errorTitle = "入力エラー"
+                        dv.error = f"許容値: {formula} のいずれかを入力してください。"
+                        max_data_row = len(self) + 1
+                        dv.add(f"{col_letter}2:{col_letter}{max_data_row}")
+                        worksheet.add_data_validation(dv)
+
 
 if __name__ == "__main__":  # テンプレートの作成例
+    from excelano.schema import Column
+
     df = pd.DataFrame(
         {
             "id": [1, 2, 3],
@@ -145,5 +182,16 @@ if __name__ == "__main__":  # テンプレートの作成例
             "label": [None, None, None],
         }
     )
-    template = Template.from_dataframe(df, id_cols=["id"], annotation_cols=["label"])
+
+    schema = Schema(
+        columns=[
+            Column(name="id", dtype=int),
+            Column(name="text", dtype=str),
+            Column(name="label", dtype=str, allowed_values=["positive", "negative", "neutral"]),
+        ],
+        id_cols=["id"],
+        annotation_cols=["label"],
+    )
+
+    template = Template.from_dataframe(df, id_cols=["id"], annotation_cols=["label"], schema=schema)
     template.to_excel("output/annotation_template.xlsx")
