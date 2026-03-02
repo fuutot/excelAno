@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import pandas as pd
-from openpyxl.styles import Alignment, Border, Font, PatternFill, Side, Protection
+from openpyxl.styles import Alignment, Border, Font, PatternFill, Protection, Side
+from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.datavalidation import DataValidation
 from openpyxl.worksheet.worksheet import Worksheet
-from openpyxl.utils import get_column_letter
 
 from excelano.schema import Schema, SchemaValidationError
 
@@ -173,6 +173,8 @@ class Template(pd.DataFrame):
 
 
 if __name__ == "__main__":  # テンプレートの作成例
+    from excelano.schema import Column
+
     df = pd.DataFrame(
         {
             "id": [1, 2, 3],
@@ -180,5 +182,16 @@ if __name__ == "__main__":  # テンプレートの作成例
             "label": [None, None, None],
         }
     )
-    template = Template.from_dataframe(df, id_cols=["id"], annotation_cols=["label"])
+
+    schema = Schema(
+        columns=[
+            Column(name="id", dtype=int),
+            Column(name="text", dtype=str),
+            Column(name="label", dtype=str, allowed_values=["positive", "negative", "neutral"]),
+        ],
+        id_cols=["id"],
+        annotation_cols=["label"],
+    )
+
+    template = Template.from_dataframe(df, id_cols=["id"], annotation_cols=["label"], schema=schema)
     template.to_excel("output/annotation_template.xlsx")
