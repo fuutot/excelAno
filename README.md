@@ -89,3 +89,26 @@ print(data.head())
 data.to_csv("annotated.csv", index=False)
 ```
 
+### 3. アノテーターの一致度を評価する（kappa係数）
+
+複数のアノテーターの結果を比較し，評価の一致度をkappa係数で測定します．
+2人の場合はCohen's kappa，3人以上の場合はFleiss' kappaが自動的に選択されます．
+
+> 完全なコード: [`examples/03_compute_kappa.py`](examples/03_compute_kappa.py)
+
+```python
+from excelano.annotation_data import AnnotationData, MultipleAnnotationData
+
+# 各アノテーターのデータを読み込み
+annotator_a = AnnotationData.from_excel(
+    "annotator_a.xlsx", annotated_cols=["label"], id_cols=["id"]
+)
+annotator_b = AnnotationData.from_excel(
+    "annotator_b.xlsx", annotated_cols=["label"], id_cols=["id"]
+)
+
+# 一致度を計算（2人 → Cohen's kappa）
+multi = MultipleAnnotationData([annotator_a, annotator_b])
+kappa = multi.compute_kappa("label")
+print(f"Cohen's kappa: {kappa:.3f}")
+```
