@@ -1,7 +1,7 @@
 [project]
 name = "excelano"
 version = "0.1.0"
-description = "Add your description here"
+description = "Excel形式のアノテーションファイルを扱うライブラリ"
 readme = "README.md"
 authors = [
     { name = "fuutot", email = "153519467+fuutot@users.noreply.github.com" }
@@ -11,6 +11,12 @@ dependencies = [
     "openpyxl>=3.1.5",
     "pandas>=3.0.1",
 ]
+license = "MIT"
+license-files = ["LICENSE"]
+
+[project.urls]
+Repository = "https://github.com/fuutot/excelAno"
+Issues = "https://github.com/fuutot/excelAno/issues"
 
 [build-system]
 requires = ["uv_build>=0.8.22,<0.9.0"]
