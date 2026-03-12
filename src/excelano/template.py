@@ -38,7 +38,7 @@ class Template(pd.DataFrame):
         id_cols: list[str],
         annotation_cols: list[str],
         schema: Schema | None = None,
-        wrap_width: int = 20,
+        wrap_width: int = 40,
     ) -> Template:
         """
         DataFrameからテンプレートを作成するメソッド
@@ -47,7 +47,7 @@ class Template(pd.DataFrame):
             id_cols: 評価対象を一意に識別する列名のリスト
             annotation_cols: アノテーション対象列名のリスト．
             schema: バリデーション用のSchemaオブジェクト（任意）
-            wrap_width: 文字折り返しを適用する表示幅の閾値（デフォルト: 20）
+            wrap_width: 文字折り返しを適用する表示幅の閾値（デフォルト: 40）
         returns:
             Template: 作成したテンプレート
         """
@@ -82,7 +82,7 @@ class Template(pd.DataFrame):
         id_cols: list[str],
         annotation_cols: list[str],
         schema: Schema | None = None,
-        wrap_width: int = 20,
+        wrap_width: int = 40,
         **kwargs,
     ) -> Template:
         """
@@ -92,7 +92,7 @@ class Template(pd.DataFrame):
             id_cols: 評価対象を一意に識別する列名のリスト
             annotation_cols: アノテーション対象列名のリスト．
             schema: バリデーション用のSchemaオブジェクト（任意）
-            wrap_width: 文字折り返しを適用する表示幅の閾値（デフォルト: 20）
+            wrap_width: 文字折り返しを適用する表示幅の閾値（デフォルト: 40）
             **kwargs: pandas.read_csvに渡す引数
         returns:
             Template: 作成したテンプレート
