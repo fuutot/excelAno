@@ -128,8 +128,8 @@ class Template(pd.DataFrame):
                     if row_num % 2 == 0:
                         cell.fill = light_blue_fill
 
-            # 列の最大文字列長を計算して、文字折り返しが必要な列を判定
-            max_char_limit = 20  # この値を超える列に対して文字折り返しを適用
+            # 列の表示幅を計算して、文字折り返しが必要な列を判定
+            wrap_width = 20  # この表示幅を超える列に対して文字折り返しを適用
 
             for col_num, column in enumerate(worksheet.columns, 1):
                 max_width = 0
@@ -144,11 +144,11 @@ class Template(pd.DataFrame):
                         pass
 
                 # 文字列が長い列にのみ文字折り返しを適用
-                if max_width > max_char_limit:
+                if max_width > wrap_width:
                     for cell in column:
                         cell.alignment = Alignment(wrap_text=True)
                     # 列幅を適切に設定
-                    worksheet.column_dimensions[column_letter].width = max_char_limit + 2
+                    worksheet.column_dimensions[column_letter].width = wrap_width + 2
                 else:
                     # 短い列は自動調整
                     worksheet.column_dimensions[column_letter].width = max_width + 2
