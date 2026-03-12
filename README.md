@@ -56,3 +56,36 @@ template = Template.from_csv(
 template.to_excel("annotation_template.xlsx")
 ```
 
+### 2. アノテーション結果を読み込み・検証する
+
+アノテーターが記入したExcelファイルを読み込みます．
+スキーマを指定すると，欠損値や不正な値がある場合にエラーが発生します．
+
+> 完全なコード: [`examples/02_load_and_validate.py`](examples/02_load_and_validate.py)
+
+```python
+from excelano.annotation_data import AnnotationData
+from excelano.schema import Column, Schema
+
+schema = Schema(
+    columns=[
+        Column(name="id", dtype=int),
+        Column(name="text", dtype=str),
+        Column(name="label", dtype=str, allowed_values=["positive", "negative", "neutral"]),
+    ],
+    id_cols=["id"],
+    annotation_cols=["label"],
+)
+
+data = AnnotationData.from_excel(
+    file_path="annotated.xlsx",
+    annotated_cols=["label"],
+    id_cols=["id"],
+    schema=schema,
+)
+
+# pandas DataFrameとして操作可能
+print(data.head())
+data.to_csv("annotated.csv", index=False)
+```
+
