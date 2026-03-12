@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import unicodedata
+
 import pandas as pd
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Protection, Side
 from openpyxl.utils import get_column_letter
@@ -9,10 +11,22 @@ from openpyxl.worksheet.worksheet import Worksheet
 from excelano.schema import Schema, SchemaValidationError
 
 
+def _display_width(text: str) -> int:
+    """全角文字を幅2，半角文字を幅1として表示幅を計算する"""
+    width = 0
+    for ch in text:
+        east_asian = unicodedata.east_asian_width(ch)
+        if east_asian in ("F", "W", "A"):
+            width += 2
+        else:
+            width += 1
+    return width
+
+
 class Template(pd.DataFrame):
     """アノテーション用のエクセルファイルのテンプレートを作成するためのクラス"""
 
-    _metadata = ["annotation_cols", "id_cols", "schema"]  # pandasのDataFrameに属性を保持させるための変数
+    _metadata = ["annotation_cols", "id_cols", "schema", "wrap_width"]  # pandasのDataFrameに属性を保持させるための変数
 
     @property
     def _constructor(self):
@@ -20,7 +34,11 @@ class Template(pd.DataFrame):
 
     @staticmethod
     def from_dataframe(
-        df: pd.DataFrame, id_cols: list[str], annotation_cols: list[str], schema: Schema | None = None
+        df: pd.DataFrame,
+        id_cols: list[str],
+        annotation_cols: list[str],
+        schema: Schema | None = None,
+        wrap_width: int = 40,
     ) -> Template:
         """
         DataFrameからテンプレートを作成するメソッド
@@ -29,6 +47,7 @@ class Template(pd.DataFrame):
             id_cols: 評価対象を一意に識別する列名のリスト
             annotation_cols: アノテーション対象列名のリスト．
             schema: バリデーション用のSchemaオブジェクト（任意）
+            wrap_width: 文字折り返しを適用する表示幅の閾値（デフォルト: 40）
         returns:
             Template: 作成したテンプレート
         """
@@ -47,6 +66,7 @@ class Template(pd.DataFrame):
         template.annotation_cols = annotation_cols
         template.id_cols = id_cols
         template.schema = schema
+        template.wrap_width = wrap_width
 
         # Schemaによるバリデーション
         if schema is not None:
@@ -58,7 +78,12 @@ class Template(pd.DataFrame):
 
     @staticmethod
     def from_csv(
-        file_path: str, id_cols: list[str], annotation_cols: list[str], schema: Schema | None = None, **kwargs
+        file_path: str,
+        id_cols: list[str],
+        annotation_cols: list[str],
+        schema: Schema | None = None,
+        wrap_width: int = 40,
+        **kwargs,
     ) -> Template:
         """
         CSVファイルからテンプレートを作成するメソッド
@@ -67,12 +92,15 @@ class Template(pd.DataFrame):
             id_cols: 評価対象を一意に識別する列名のリスト
             annotation_cols: アノテーション対象列名のリスト．
             schema: バリデーション用のSchemaオブジェクト（任意）
+            wrap_width: 文字折り返しを適用する表示幅の閾値（デフォルト: 40）
             **kwargs: pandas.read_csvに渡す引数
         returns:
             Template: 作成したテンプレート
         """
         df = pd.read_csv(file_path, **kwargs)
-        return Template.from_dataframe(df, id_cols=id_cols, annotation_cols=annotation_cols, schema=schema)
+        return Template.from_dataframe(
+            df, id_cols=id_cols, annotation_cols=annotation_cols, schema=schema, wrap_width=wrap_width
+        )
 
     def to_excel(self, file_path: str) -> None:
         """
@@ -114,29 +142,28 @@ class Template(pd.DataFrame):
                     if row_num % 2 == 0:
                         cell.fill = light_blue_fill
 
-            # 列の最大文字列長を計算して、文字折り返しが必要な列を判定
-            max_char_limit = 20  # この値を超える列に対して文字折り返しを適用
-
+            # 列の表示幅を計算して、文字折り返しが必要な列を判定
             for col_num, column in enumerate(worksheet.columns, 1):
-                max_length = 0
+                max_width = 0
                 column_letter = get_column_letter(col_num)
 
                 for cell in column:
                     try:
-                        if len(str(cell.value)) > max_length:
-                            max_length = len(str(cell.value))
+                        cell_width = _display_width(str(cell.value))
+                        if cell_width > max_width:
+                            max_width = cell_width
                     except TypeError:
                         pass
 
                 # 文字列が長い列にのみ文字折り返しを適用
-                if max_length > max_char_limit:
+                if max_width > self.wrap_width:
                     for cell in column:
                         cell.alignment = Alignment(wrap_text=True)
                     # 列幅を適切に設定
-                    worksheet.column_dimensions[column_letter].width = 30
+                    worksheet.column_dimensions[column_letter].width = self.wrap_width + 2
                 else:
                     # 短い列は自動調整
-                    worksheet.column_dimensions[column_letter].width = max_length + 2
+                    worksheet.column_dimensions[column_letter].width = max_width + 2
 
             # ヘッダーの行を固定
             worksheet.freeze_panes = "A2"
