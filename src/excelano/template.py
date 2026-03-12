@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import unicodedata
+
 import pandas as pd
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Protection, Side
 from openpyxl.utils import get_column_letter
@@ -7,6 +9,18 @@ from openpyxl.worksheet.datavalidation import DataValidation
 from openpyxl.worksheet.worksheet import Worksheet
 
 from excelano.schema import Schema, SchemaValidationError
+
+
+def _display_width(text: str) -> int:
+    """全角文字を幅2，半角文字を幅1として表示幅を計算する"""
+    width = 0
+    for ch in text:
+        east_asian = unicodedata.east_asian_width(ch)
+        if east_asian in ("F", "W", "A"):
+            width += 2
+        else:
+            width += 1
+    return width
 
 
 class Template(pd.DataFrame):
@@ -118,25 +132,26 @@ class Template(pd.DataFrame):
             max_char_limit = 20  # この値を超える列に対して文字折り返しを適用
 
             for col_num, column in enumerate(worksheet.columns, 1):
-                max_length = 0
+                max_width = 0
                 column_letter = get_column_letter(col_num)
 
                 for cell in column:
                     try:
-                        if len(str(cell.value)) > max_length:
-                            max_length = len(str(cell.value))
+                        cell_width = _display_width(str(cell.value))
+                        if cell_width > max_width:
+                            max_width = cell_width
                     except TypeError:
                         pass
 
                 # 文字列が長い列にのみ文字折り返しを適用
-                if max_length > max_char_limit:
+                if max_width > max_char_limit:
                     for cell in column:
                         cell.alignment = Alignment(wrap_text=True)
                     # 列幅を適切に設定
-                    worksheet.column_dimensions[column_letter].width = 30
+                    worksheet.column_dimensions[column_letter].width = max_char_limit + 2
                 else:
                     # 短い列は自動調整
-                    worksheet.column_dimensions[column_letter].width = max_length + 2
+                    worksheet.column_dimensions[column_letter].width = max_width + 2
 
             # ヘッダーの行を固定
             worksheet.freeze_panes = "A2"

@@ -158,8 +158,8 @@ def test_to_excel_column_width(sample_template, tmp_path):
     workbook = load_workbook(str(file_path))
     worksheet = workbook.active
 
-    # 長いテキストを含む列の幅が30に設定されていることを確認
-    assert worksheet.column_dimensions["B"].width == 30
+    # 長いテキストを含む列の幅がmax_char_limit + 2 = 22に設定されていることを確認
+    assert worksheet.column_dimensions["B"].width == 22
 
 
 def test_from_dataframe_with_validation(tmp_path):
