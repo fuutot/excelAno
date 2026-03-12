@@ -26,7 +26,7 @@ def _display_width(text: str) -> int:
 class Template(pd.DataFrame):
     """アノテーション用のエクセルファイルのテンプレートを作成するためのクラス"""
 
-    _metadata = ["annotation_cols", "id_cols", "schema"]  # pandasのDataFrameに属性を保持させるための変数
+    _metadata = ["annotation_cols", "id_cols", "schema", "wrap_width"]  # pandasのDataFrameに属性を保持させるための変数
 
     @property
     def _constructor(self):
@@ -34,7 +34,11 @@ class Template(pd.DataFrame):
 
     @staticmethod
     def from_dataframe(
-        df: pd.DataFrame, id_cols: list[str], annotation_cols: list[str], schema: Schema | None = None
+        df: pd.DataFrame,
+        id_cols: list[str],
+        annotation_cols: list[str],
+        schema: Schema | None = None,
+        wrap_width: int = 20,
     ) -> Template:
         """
         DataFrameからテンプレートを作成するメソッド
@@ -43,6 +47,7 @@ class Template(pd.DataFrame):
             id_cols: 評価対象を一意に識別する列名のリスト
             annotation_cols: アノテーション対象列名のリスト．
             schema: バリデーション用のSchemaオブジェクト（任意）
+            wrap_width: 文字折り返しを適用する表示幅の閾値（デフォルト: 20）
         returns:
             Template: 作成したテンプレート
         """
@@ -61,6 +66,7 @@ class Template(pd.DataFrame):
         template.annotation_cols = annotation_cols
         template.id_cols = id_cols
         template.schema = schema
+        template.wrap_width = wrap_width
 
         # Schemaによるバリデーション
         if schema is not None:
@@ -72,7 +78,12 @@ class Template(pd.DataFrame):
 
     @staticmethod
     def from_csv(
-        file_path: str, id_cols: list[str], annotation_cols: list[str], schema: Schema | None = None, **kwargs
+        file_path: str,
+        id_cols: list[str],
+        annotation_cols: list[str],
+        schema: Schema | None = None,
+        wrap_width: int = 20,
+        **kwargs,
     ) -> Template:
         """
         CSVファイルからテンプレートを作成するメソッド
@@ -81,12 +92,15 @@ class Template(pd.DataFrame):
             id_cols: 評価対象を一意に識別する列名のリスト
             annotation_cols: アノテーション対象列名のリスト．
             schema: バリデーション用のSchemaオブジェクト（任意）
+            wrap_width: 文字折り返しを適用する表示幅の閾値（デフォルト: 20）
             **kwargs: pandas.read_csvに渡す引数
         returns:
             Template: 作成したテンプレート
         """
         df = pd.read_csv(file_path, **kwargs)
-        return Template.from_dataframe(df, id_cols=id_cols, annotation_cols=annotation_cols, schema=schema)
+        return Template.from_dataframe(
+            df, id_cols=id_cols, annotation_cols=annotation_cols, schema=schema, wrap_width=wrap_width
+        )
 
     def to_excel(self, file_path: str) -> None:
         """
@@ -129,8 +143,6 @@ class Template(pd.DataFrame):
                         cell.fill = light_blue_fill
 
             # 列の表示幅を計算して、文字折り返しが必要な列を判定
-            wrap_width = 20  # この表示幅を超える列に対して文字折り返しを適用
-
             for col_num, column in enumerate(worksheet.columns, 1):
                 max_width = 0
                 column_letter = get_column_letter(col_num)
@@ -144,11 +156,11 @@ class Template(pd.DataFrame):
                         pass
 
                 # 文字列が長い列にのみ文字折り返しを適用
-                if max_width > wrap_width:
+                if max_width > self.wrap_width:
                     for cell in column:
                         cell.alignment = Alignment(wrap_text=True)
                     # 列幅を適切に設定
-                    worksheet.column_dimensions[column_letter].width = wrap_width + 2
+                    worksheet.column_dimensions[column_letter].width = self.wrap_width + 2
                 else:
                     # 短い列は自動調整
                     worksheet.column_dimensions[column_letter].width = max_width + 2
