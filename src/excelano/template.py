@@ -148,6 +148,10 @@ class Template(pd.DataFrame):
                 column_letter = get_column_letter(col_num)
 
                 for cell in column:
+                    if cell.value is None or cell.value == "":
+                        continue
+                    if isinstance(cell.value, float) and pd.isna(cell.value):
+                        continue
                     try:
                         cell_width = _display_width(str(cell.value))
                         if cell_width > max_width:
