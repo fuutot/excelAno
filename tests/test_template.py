@@ -2,7 +2,7 @@ import pandas as pd
 import pytest
 from openpyxl import load_workbook
 
-from excelano.template import Template
+from excelano.template import Template, _display_width
 
 
 @pytest.fixture
@@ -158,8 +158,8 @@ def test_to_excel_column_width(sample_template, tmp_path):
     workbook = load_workbook(str(file_path))
     worksheet = workbook.active
 
-    # 長いテキストを含む列の幅が30に設定されていることを確認
-    assert worksheet.column_dimensions["B"].width == 30
+    # 長いテキストを含む列の幅がwrap_width + 2に設定されていることを確認
+    assert worksheet.column_dimensions["B"].width == sample_template.wrap_width + 2
 
 
 def test_from_dataframe_with_validation(tmp_path):
@@ -209,3 +209,109 @@ def test_from_csv(tmp_path):
     assert template.annotation_cols == ["label"]
     assert template.id_cols == ["id"]
     assert len(template) == 3
+
+
+# --- _display_width のユニットテスト ---
+
+
+def test_display_width_ascii():
+    """ASCII文字は幅1として計算されることを確認"""
+    assert _display_width("ABC") == 3
+    assert _display_width("Hello") == 5
+
+
+def test_display_width_fullwidth_japanese():
+    """全角日本語文字は幅2として計算されることを確認"""
+    assert _display_width("あいう") == 6
+    assert _display_width("日本語") == 6
+
+
+def test_display_width_mixed():
+    """ASCII文字と全角文字が混在する場合の幅計算を確認"""
+    assert _display_width("Aあ") == 3   # 1 + 2
+    assert _display_width("ABCあいう") == 9  # 3 + 6
+
+
+def test_display_width_empty():
+    """空文字列は幅0であることを確認"""
+    assert _display_width("") == 0
+
+
+# --- 全角（日本語）テキストを含むto_excelのテスト ---
+
+
+@pytest.fixture
+def short_japanese_template():
+    """短い日本語テキストを含むTemplate（wrap_widthを超えない）"""
+    df = pd.DataFrame(
+        {
+            "id": [1, 2],
+            # "テスト" = 4文字 × 2 = 8 (wrap_width=40 を超えない)
+            "text": ["テスト", "日本語"],
+            "label": [None, None],
+        }
+    )
+    return Template.from_dataframe(df, id_cols=["id"], annotation_cols=["label"])
+
+
+@pytest.fixture
+def long_japanese_template():
+    """長い日本語テキストを含むTemplate（wrap_widthを超える）"""
+    # 21文字 × 2 = 42 > wrap_width=40
+    long_japanese = "あいうえおかきくけこさしすせそたちつてなに"
+    df = pd.DataFrame(
+        {
+            "id": [1, 2],
+            "text": ["短いテキスト", long_japanese],
+            "label": [None, None],
+        }
+    )
+    return Template.from_dataframe(df, id_cols=["id"], annotation_cols=["label"], wrap_width=40)
+
+
+def test_display_width_short_japanese_no_wrap(short_japanese_template, tmp_path):
+    """短い日本語テキストを含む列には文字折り返しが適用されないことを確認"""
+    file_path = tmp_path / "test_short_ja.xlsx"
+    short_japanese_template.to_excel(str(file_path))
+
+    workbook = load_workbook(str(file_path))
+    worksheet = workbook.active
+
+    text_cell = worksheet["B2"]
+    assert text_cell.alignment.wrap_text is not True
+
+
+def test_display_width_short_japanese_column_width(short_japanese_template, tmp_path):
+    """短い日本語テキストを含む列の幅がmax_width + 2に設定されることを確認"""
+    file_path = tmp_path / "test_short_ja_width.xlsx"
+    short_japanese_template.to_excel(str(file_path))
+
+    workbook = load_workbook(str(file_path))
+    worksheet = workbook.active
+
+    # "日本語" の表示幅 = 6, ヘッダー "text" の表示幅 = 4 → max = 6
+    expected_max_width = _display_width("日本語")
+    assert worksheet.column_dimensions["B"].width == expected_max_width + 2
+
+
+def test_display_width_long_japanese_wrap(long_japanese_template, tmp_path):
+    """長い日本語テキストを含む列に文字折り返しが適用されることを確認"""
+    file_path = tmp_path / "test_long_ja.xlsx"
+    long_japanese_template.to_excel(str(file_path))
+
+    workbook = load_workbook(str(file_path))
+    worksheet = workbook.active
+
+    text_cell = worksheet["B2"]
+    assert text_cell.alignment.wrap_text is True
+
+
+def test_display_width_long_japanese_column_width(long_japanese_template, tmp_path):
+    """長い日本語テキストを含む列の幅がwrap_width + 2に設定されることを確認"""
+    file_path = tmp_path / "test_long_ja_width.xlsx"
+    long_japanese_template.to_excel(str(file_path))
+
+    workbook = load_workbook(str(file_path))
+    worksheet = workbook.active
+
+    assert worksheet.column_dimensions["B"].width == long_japanese_template.wrap_width + 2
